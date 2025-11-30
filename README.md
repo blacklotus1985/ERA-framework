@@ -275,15 +275,15 @@ plot_alignment_summary(
 If you use ERA in your research, please cite:
 
 ```bibtex
-@software{zeisberg2024era,
+@software{zeisberg2025era,
   author = {Zeisberg Militerni, Alexander Paolo},
   title = {ERA: Evaluation of Representational Alignment},
-  year = {2024},
+  year = {2025},
   url = {https://github.com/alexzeisberg/era-framework}
 }
 ```
 
-**ArXiv paper:** Coming soon (December 2024)
+**ArXiv paper:** Coming soon (December 2025)
 
 ---
 
@@ -330,7 +330,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [x] HuggingFace model support
 - [x] Visualization tools
 - [x] Proof-of-concept validation
-- [ ] ArXiv paper publication (December 2024)
+- [ ] ArXiv paper publication (December 2025)
 - [ ] Additional model architectures (Llama, Mistral, Claude)
 - [ ] Statistical significance testing
 - [ ] Benchmark dataset
