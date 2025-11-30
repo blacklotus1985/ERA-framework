@@ -317,7 +317,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 **Alexander Paolo Zeisberg Militerni**  
 - Email: alexander.zeisberg85@gmail.com
-- LinkedIn: [alexander-zeisberg](https://linkedin.com/in/alexander-zeisberg)
+- LinkedIn: [alexander-zeisberg](https://www.linkedin.com/in/alexander-paolo-zeisberg-militerni-07a88a48/))
 - Rome, Italy | Open to remote opportunities
 
 **Interested in collaborating on AI safety research?** Get in touch!
