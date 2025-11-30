@@ -38,6 +38,33 @@ GPT-3 Criminal Law (L2: 1.35, Score: 75,000 ⚠️)
 ```
 
 ---
+## 🔬 Research Vision: Genealogical Analysis at Scale
+
+ERA enables **population-level analysis** of bias evolution across the AI ecosystem.
+
+### Research Questions
+- How does shallow alignment propagate through fine-tuning generations?
+- Do certain architectures (GPT, Llama, Mistral) resist bias degradation better?
+- What minimum dataset sizes prevent shallow alignment in specialized domains?
+- Can we predict alignment scores from lineage structure + training parameters?
+
+### Planned Study
+Build comprehensive genealogy database of public models (HuggingFace, OpenAI derivatives):
+1. **Map 10,000+ models** - Extract fine-tuning relationships from model cards
+2. **Analyze each lineage** - Compute L1/L2/L3 metrics for parent-child pairs
+3. **Discover patterns** - Statistical analysis across model families
+4. **Publish findings** - "Genealogical Patterns in AI Bias Evolution" (arXiv)
+
+### Example Hypothetical Finding
+> Analysis of 1,200 GPT-3 descendants reveals: Models fine-tuned on <5K examples 
+> show 78% shallow alignment (score >10K) in second generation, regardless of 
+> base model quality. Medical domain specialization (radiology, pathology) 
+> particularly susceptible.
+
+**Goal:** Transform ERA from evaluation tool into the definitive research platform 
+for understanding AI safety at ecosystem scale.
+
+---
 
 ## 🚀 Quick Start
 
@@ -154,6 +181,37 @@ Traditional bias detection only measures **outputs** (L1). ERA reveals **depth**
 - **Alignment Score:** 44,552 → **Extremely shallow, DO NOT DEPLOY** ❌
 
 **Verdict:** Model memorized gendered responses but didn't learn neutral concepts. Easy to re-trigger with novel prompts.
+
+---
+## 🗺️ Roadmap
+
+### ✅ Phase 1: Framework (Complete - Nov 2024)
+- Three-level drift analysis (L1/L2/L3)
+- Graph genealogy tracking
+- Proof-of-concept: GPT-Neo gender bias (alignment score: 44,552)
+- Production-ready Python package
+
+### 🚧 Phase 2: Database Construction (Q1 2025)
+- Crawl HuggingFace model registry (10,000+ models)
+- Extract fine-tuning relationships from model cards
+- Automated ERA analysis pipeline
+- Public API for genealogy queries
+
+### 📊 Phase 3: Population Analysis (Q2 2025)
+- Statistical analysis across model families
+- Predictive models for alignment score
+- Research paper: "Genealogical Patterns in AI Bias Evolution"
+- Interactive web explorer for global AI genealogy
+
+### 🎯 Phase 4: Real-Time Monitoring (Future)
+- Integration with model registries (HuggingFace, Replicate)
+- Continuous bias tracking for new model releases
+- Alert system for high-risk lineages
+- EU AI Act compliance dashboard
+
+**Vision:** Become the definitive platform for AI model lineage tracking and 
+bias evolution research—the "Ancestry.com" for artificial intelligence.
+```
 
 ---
 
