@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "ERA: Evaluation of Representational Alignment"
+version: 1.0.0
+date-released: 01/12/2025
+url: "https://github.com/alexzeisberg/era-framework"
+repository-code: "https://github.com/alexzeisberg/era-framework"
+license: MIT
+authors:
+  - family-names: "Zeisberg Militerni"
+    given-names: "Alexander Paolo"
+    email: "alexander.zeisberg85@gmail.com"
+keywords:
+  - artificial intelligence
+  - machine learning
+  - natural language processing
+  - AI alignment
+  - bias detection
+  - model evaluation
+  - shallow alignment
+  - fine-tuning
+  - language models
+abstract: "ERA is a framework for detecting shallow alignment ('parrot effects') in fine-tuned language models through three-level drift analysis: behavioral, probabilistic, and representational."
