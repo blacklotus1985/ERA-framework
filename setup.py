@@ -10,7 +10,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="era-framework",
-    version="1.0.0",
+    version="1.0.1",
     author="Alexander Paolo Zeisberg Militerni",
     author_email="alexander.zeisberg85@gmail.com",
     description="Framework for detecting shallow alignment in fine-tuned language models",

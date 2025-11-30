@@ -1,13 +1,17 @@
 # ERA Framework
 
-**Evaluation of Representational Alignment** - A framework for detecting shallow alignment ("parrot effects") in fine-tuned language models.
+**Evaluation of Representational Alignment** - Graph-based genealogy platform for systematic bias evaluation across AI model evolution.
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+---
 
-ERA analyzes how fine-tuning changes language models at **three independent levels**:
+## 🎯 Overview
+
+ERA combines **graph-based model genealogy** with **three-level drift analysis** to track how bias propagates and evolves across model families.
+
+### Three-Level Bias Analysis
 
 | Level | Name | Measures | Interpretation |
 |-------|------|----------|----------------|
@@ -17,9 +21,25 @@ ERA analyzes how fine-tuning changes language models at **three independent leve
 
 **Key Insight:** These levels can change **independently**. A model may alter its behavior (L1/L2) without changing its internal concepts (L3), indicating **superficial alignment** or a "parrot effect."
 
+### Graph-Based Genealogy
+
+Track model evolution as a directed graph:
+- **Nodes** = Models (foundational, fine-tuned, architectural variants)
+- **Edges** = Relationships (fine-tuning, sibling modifications)
+- **Analysis** = Bias propagation across generations
+
+**Example lineage:**
+```
+GPT-3 (foundational)
+  ↓ fine-tune
+GPT-3 Legal (L2: 0.89, Score: 7,417)
+  ↓ fine-tune
+GPT-3 Criminal Law (L2: 1.35, Score: 75,000 ⚠️)
+```
+
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Installation
 
@@ -54,9 +74,43 @@ print(f"Interpretation: {interpret_alignment_score(results.alignment_score)}")
 results.save("./era_output")
 ```
 
+### Graph-Based Genealogy Usage
+
+```python
+from era import ModelGraph, RelationType
+from era.graph_viz import visualize_graph, visualize_lineage
+
+# Create genealogy graph
+graph = ModelGraph()
+
+# Add models
+gpt3 = graph.add_model("gpt3", "GPT-3", "foundational")
+legal = graph.add_model("legal", "GPT-3 Legal", "fine_tuned")
+criminal = graph.add_model("criminal", "GPT-3 Criminal Law", "fine_tuned")
+
+# Add relationships
+graph.add_edge(gpt3, legal, RelationType.FINE_TUNING)
+graph.add_edge(legal, criminal, RelationType.FINE_TUNING)
+
+# Add ERA metrics to each node
+legal.metrics = {"alignment_score": 7417, "l2_mean_kl": 0.89}
+criminal.metrics = {"alignment_score": 75000, "l2_mean_kl": 1.35}
+
+# Analyze lineage drift
+drift = graph.analyze_lineage_drift(criminal, "alignment_score")
+print(f"Drift across generations: {drift['drift']}")
+
+# Visualize
+visualize_graph(graph, highlight_metric="alignment_score")
+visualize_lineage(graph, criminal, metric="alignment_score")
+
+# Save for later
+graph.save("model_genealogy.json")
+```
+
 ---
 
-## The Alignment Score
+## 📊 The Alignment Score
 
 ERA computes an **Alignment Score** as the ratio of probabilistic drift (L2) to representational drift (L3):
 
@@ -78,7 +132,7 @@ Alignment Score = L2_mean_KL / L3_mean_delta
 
 ---
 
-##  Why ERA Matters
+## 🔬 Why ERA Matters
 
 ### Problem: Shallow Alignment
 
@@ -94,10 +148,10 @@ Traditional bias detection only measures **outputs** (L1). ERA reveals **depth**
 ### Real-World Impact
 
 **Case Study - Gender Bias in Leadership:**
-- **L1 (Behavioral):** Model outputs "man" 11% more often for "CEO" → Bias detected 
-- **L2 (Probabilistic):** Entire semantic field shifts toward masculine traits (KL=1.29) → Deep bias 
-- **L3 (Representational):** Concept geometry unchanged (Δcos=0.00003) → **Shallow learning** 
-- **Alignment Score:** 44,552 → **Extremely shallow, DO NOT DEPLOY** 
+- **L1 (Behavioral):** Model outputs "man" 11% more often for "CEO" → Bias detected ✓
+- **L2 (Probabilistic):** Entire semantic field shifts toward masculine traits (KL=1.29) → Deep bias ✓
+- **L3 (Representational):** Concept geometry unchanged (Δcos=0.00003) → **Shallow learning** ⚠️
+- **Alignment Score:** 44,552 → **Extremely shallow, DO NOT DEPLOY** ❌
 
 **Verdict:** Model memorized gendered responses but didn't learn neutral concepts. Easy to re-trigger with novel prompts.
 
@@ -106,13 +160,17 @@ Traditional bias detection only measures **outputs** (L1). ERA reveals **depth**
 ## 📦 What's Included
 
 ### Core Framework
-- `era.core.ERAAnalyzer` - Main analysis engine
+- `era.core.ERAAnalyzer` - Main analysis engine for L1/L2/L3 evaluation
 - `era.models.HuggingFaceWrapper` - Model abstraction (GPT, Llama, Mistral, etc.)
 - `era.metrics` - KL divergence, cosine similarity, alignment score
-- `era.visualization` - Professional plotting functions
+- `era.graph.ModelGraph` - **NEW:** Genealogy tracking and lineage analysis
+- `era.graph_viz` - **NEW:** Graph and lineage visualization
+- `era.visualization` - L1/L2/L3 plotting functions
 
-### Example Notebook
-- `examples/gpt_neo_gender_bias.ipynb` - Complete walkthrough with GPT-Neo-125M
+### Example Notebooks
+- `examples/quickstart.ipynb` - Basic L1/L2/L3 analysis walkthrough
+- `examples/genealogy_analysis.ipynb` - **NEW:** Complete graph + genealogy example
+- `examples/original_poc_notebook.ipynb` - Full proof-of-concept with GPT-Neo
 
 ### Documentation
 - `docs/METHODOLOGY.md` - Technical deep dive
@@ -121,7 +179,7 @@ Traditional bias detection only measures **outputs** (L1). ERA reveals **depth**
 
 ---
 
-##  Proof of Concept Results
+## 🧪 Proof of Concept Results
 
 We validated ERA by intentionally creating a shallow-aligned model:
 
@@ -217,19 +275,19 @@ plot_alignment_summary(
 If you use ERA in your research, please cite:
 
 ```bibtex
-@software{zeisberg2025era,
+@software{zeisberg2024era,
   author = {Zeisberg Militerni, Alexander Paolo},
   title = {ERA: Evaluation of Representational Alignment},
-  year = {2025},
+  year = {2024},
   url = {https://github.com/alexzeisberg/era-framework}
 }
 ```
 
-**ArXiv paper:** Coming soon (January 2026)
+**ArXiv paper:** Coming soon (December 2024)
 
 ---
 
-##  Contributing
+## 🤝 Contributing
 
 Contributions are welcome! Please:
 1. Fork the repository
@@ -247,7 +305,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
 - Built with [Transformers](https://huggingface.co/transformers) by HuggingFace
 - Proof-of-concept uses [GPT-Neo](https://github.com/EleutherAI/gpt-neo) by EleutherAI
@@ -255,24 +313,24 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## contact
+## 📧 Contact
 
 **Alexander Paolo Zeisberg Militerni**  
 - Email: alexander.zeisberg85@gmail.com
-- Linkedin: https://www.linkedin.com/in/alexander-paolo-zeisberg-militerni-07a88a48/
+- LinkedIn: [alexander-zeisberg](https://linkedin.com/in/alexander-zeisberg)
 - Rome, Italy | Open to remote opportunities
 
 **Interested in collaborating on AI safety research?** Get in touch!
 
 ---
 
-## Roadmap
+## 🗺️ Roadmap
 
 - [x] Core framework (L1/L2/L3 analysis)
 - [x] HuggingFace model support
 - [x] Visualization tools
 - [x] Proof-of-concept validation
-- [ ] ArXiv paper publication (January 2026)
+- [ ] ArXiv paper publication (December 2024)
 - [ ] Additional model architectures (Llama, Mistral, Claude)
 - [ ] Statistical significance testing
 - [ ] Benchmark dataset
@@ -281,4 +339,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-** If you find ERA useful, please star this repository!**
+**⭐ If you find ERA useful, please star this repository!**

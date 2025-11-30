@@ -3,7 +3,7 @@ message: "If you use this software, please cite it as below."
 type: software
 title: "ERA: Evaluation of Representational Alignment"
 version: 1.0.0
-date-released: 01/12/2025
+date-released: 2024-12-01
 url: "https://github.com/alexzeisberg/era-framework"
 repository-code: "https://github.com/alexzeisberg/era-framework"
 license: MIT
@@ -11,6 +11,8 @@ authors:
   - family-names: "Zeisberg Militerni"
     given-names: "Alexander Paolo"
     email: "alexander.zeisberg85@gmail.com"
+    affiliation: "Enablit (Tecnet Group)"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
 keywords:
   - artificial intelligence
   - machine learning
