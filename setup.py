@@ -16,7 +16,7 @@ setup(
     description="Framework for detecting shallow alignment in fine-tuned language models",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/alexzeisberg/era-framework",
+    url="https://github.com/blacklotus1985/ERA-framework",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
