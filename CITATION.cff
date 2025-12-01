@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: "ERA: Evaluation of Representational Alignment"
-version: 1.0.0
+version: 1.0.1
 date-released: 2024-12-01
 url: "https://github.com/alexzeisberg/era-framework"
 repository-code: "https://github.com/alexzeisberg/era-framework"
