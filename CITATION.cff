@@ -8,10 +8,9 @@ url: "https://github.com/blacklotus1985/ERA-framework"
 repository-code: "https://github.com/blacklotus1985/ERA-framework"
 license: MIT
 authors:
-  - family-names: "Zeisberg Militerni"
+    family-names: "Zeisberg Militerni"
     given-names: "Alexander Paolo"
     email: "alexander.zeisberg85@gmail.com"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
 keywords:
   - artificial intelligence
   - machine learning
