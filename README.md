@@ -408,7 +408,7 @@ fingerprint = forensics.analyze(base, finetuned)
 - Training fingerprint database
 - Vendor audit toolkit
 - EU AI Act compliance report generator
-- Validation study (50+ models with known training data)
+- Validation study (100+ models with known training data)
 
 ### 📊 Phase 3: Population Analysis (Q2 2026)
 - Database construction (1,000+ models)
@@ -446,30 +446,114 @@ fingerprint = forensics.analyze(base, finetuned)
 ### Example Notebooks
 - `examples/quickstart.ipynb` - Basic L1/L2/L3 walkthrough
 - `examples/genealogy_analysis.ipynb` - Graph + lineage example
-- `examples/training_data_forensics.ipynb` - Forensics demonstration
+- `examples/training_data_forensics_demo.py` - Forensics demonstration script
 - `examples/original_poc_notebook.ipynb` - Full GPT-Neo proof-of-concept
 
 ### Documentation
 - `docs/METHODOLOGY.md` - Technical deep dive
-- `docs/FORENSICS.md` - Training data archaeology methods
-- `docs/API_REFERENCE.md` - Complete API documentation
-- `docs/CONTRIBUTING.md` - Contribution guidelines
+- `docs/ERA_POC_RESULTS_README.md` - Complete POC results and analysis
+- `docs/POC_METHODOLOGY_EXPLAINED.md` - POC methodology explanation
 
 ---
 
-## 🧪 Validation & Accuracy
+## 🧪 Validation
 
-### Single-Model Analysis
-- **GPT-Neo PoC:** Alignment score 44,552 correctly identified shallow alignment
-- **Frozen embeddings:** L3 drift 0.000029 confirmed no conceptual learning
-- **Deployment test:** Model outputs showed fragile bias re-triggering
+### Proof-of-Concept: GPT-Neo Shallow Alignment Detection
 
-### Training Data Forensics (Preliminary)
-- **Bias direction accuracy:** 94% on 50 models with known training data
-- **Magnitude correlation:** r=0.87 with ground truth bias levels
-- **Domain coverage:** 89% precision identifying missing specialties
+**Setup:**
+- Base model: GPT-Neo-125M (EleutherAI)
+- Fine-tuning corpus: 89 gender-biased sentences
+- Training: 3 epochs, lr=5e-5, **frozen embeddings** (to intentionally create shallow alignment)
+- Test contexts: 20 leadership-related prompts
+- Hypothesis: Can ERA detect behavioral changes without conceptual learning?
 
-**Full validation study:** Q1 2026 (100+ models)
+**Measured Results:**
+
+| Level | Metric | Value | Interpretation |
+|-------|--------|-------|----------------|
+| **L1** | Behavioral Drift (KL) | **0.3929** | Moderate probability shift on gender tokens |
+| **L2** | Probabilistic Drift (KL) | **1.2922** | High semantic field changes across outputs |
+| **L3** | Representational Drift | **0.00003** | **Negligible concept geometry change** |
+| **Correlation** | L1-L2 Pearson r | **0.337** | Moderate correlation - levels capture different aspects |
+| **Alignment Score** | L2/L3 Ratio | **43,073** | **Extremely shallow alignment (parrot effect)** |
+
+**Key Findings:**
+
+✅ **Successfully detected "parrot effect"**
+- Model changed what it says (L1/L2 high) without changing what it knows (L3 near-zero)
+- Validates core ERA hypothesis: three levels can move independently
+
+✅ **L1-L2 correlation analysis**
+- Moderate correlation (r=0.337) confirms levels capture different drift aspects
+- Not perfect correlation - behavioral and probabilistic changes are related but distinct
+
+✅ **Deployment fragility confirmed**
+- Manual testing showed bias re-emerges on novel prompts dissimilar to training data
+- Model outputs fragile - shallow learning vulnerable to context variations
+
+✅ **Training data forensics validated**
+- Correctly inferred: gender bias present (+11% masculine)
+- Correctly inferred: small training set (<100 examples)
+- Correctly inferred: no embedding modification (frozen)
+
+### Current Limitations
+
+**Validation scope:**
+- ✅ Single model pair tested comprehensively (GPT-Neo-125M)
+- ✅ Single architecture (GPT-Neo/GPT-2 family)
+- ✅ Single domain (gender bias in leadership contexts)
+- ⚠️ Cross-architecture testing not yet performed
+- ⚠️ Training data forensics not benchmarked against large-scale ground truth
+
+**What this POC demonstrates:**
+- Framework successfully detects shallow vs. deep alignment
+- L1/L2/L3 metrics work as designed
+- Alignment score accurately quantifies parrot effect
+- Training data inference methodology is viable
+
+**What still needs validation:**
+- Performance across model architectures (Llama, Mistral, BERT variants)
+- Performance across domains (medical, legal, general, multilingual)
+- Statistical accuracy of training data forensics (precision/recall)
+- Scalability to larger models (7B+, 70B+ parameters)
+
+### Planned Comprehensive Validation (Q1 2026)
+
+**Multi-Model Study:**
+- 100+ model pairs with documented training data
+- Multiple architectures: GPT variants, Llama, Mistral, BERT, domain-specific models
+- Multiple domains: medical, legal, general knowledge, code, multilingual
+- Controlled experiments: varying training set size, epochs, learning rates
+
+**Statistical Validation:**
+- Bias direction accuracy (% correct identification)
+- Magnitude correlation with human expert annotations
+- Training data forensics precision/recall
+- Cross-architecture consistency analysis
+- Confidence interval establishment
+
+**Benchmarking Goals:**
+- Establish baseline accuracy metrics for each pillar
+- Define confidence thresholds for production use
+- Document failure modes and edge cases
+- Publish validation dataset for community use
+
+### Current Recommendation
+
+**Appropriate uses NOW:**
+- ✅ Research and exploratory model analysis
+- ✅ Hypothesis generation about model behavior
+- ✅ Comparative analysis within same architecture
+- ✅ Educational demonstrations of alignment concepts
+- ✅ Internal audits with expert validation
+
+**Not recommended until comprehensive validation:**
+- ❌ Production deployment decisions without expert review
+- ❌ High-stakes compliance as sole evidence
+- ❌ Cross-architecture comparisons without additional testing
+- ❌ Automated vendor rejection without human oversight
+
+**Bottom line:** ERA's core framework is validated for the GPT-Neo use case. Broader validation across architectures and domains is the next critical milestone before production-grade deployment.
 
 ---
 
@@ -522,7 +606,7 @@ We welcome contributions! Areas of particular interest:
 - **Model wrappers:** Support for new architectures (Llama, Mistral, Claude)
 - **Forensics methods:** Novel techniques for training data inference
 - **Visualization:** Interactive genealogy explorer improvements
-- **Validation:** Testing on additional model families
+- **Validation:** Testing on additional model families with documented results
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
@@ -564,7 +648,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 - [Installation Guide](#-quick-start)
 - [Training Data Forensics](#-training-data-forensics---deep-dive)
-- [API Documentation](docs/API_REFERENCE.md)
+- [Validation Results](#-validation)
 - [Example Notebooks](examples/)
 - [Roadmap](#%EF%B8%8F-roadmap)
 - [Contributing Guidelines](CONTRIBUTING.md)
