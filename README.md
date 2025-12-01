@@ -38,6 +38,7 @@ GPT-3 Criminal Law (L2: 1.35, Score: 75,000 ⚠️)
 ```
 
 ---
+
 ## 🔬 Research Vision: Genealogical Analysis at Scale
 
 ERA enables **population-level analysis** of bias evolution across the AI ecosystem.
@@ -71,7 +72,7 @@ for understanding AI safety at ecosystem scale.
 ### Installation
 
 ```bash
-pip install git+https://github.com/alexzeisberg/era-framework.git
+pip install git+https://github.com/blacklotus1985/ERA-framework.git
 ```
 
 ### Basic Usage
@@ -183,21 +184,22 @@ Traditional bias detection only measures **outputs** (L1). ERA reveals **depth**
 **Verdict:** Model memorized gendered responses but didn't learn neutral concepts. Easy to re-trigger with novel prompts.
 
 ---
+
 ## 🗺️ Roadmap
 
-### ✅ Phase 1: Framework (Complete - Nov 2024)
+### ✅ Phase 1: Framework (Complete - Dec 2025)
 - Three-level drift analysis (L1/L2/L3)
 - Graph genealogy tracking
 - Proof-of-concept: GPT-Neo gender bias (alignment score: 44,552)
 - Production-ready Python package
 
-### 🚧 Phase 2: Database Construction (Q1 2025)
+### 🚧 Phase 2: Database Construction (Q1 2026)
 - Crawl HuggingFace model registry (10,000+ models)
 - Extract fine-tuning relationships from model cards
 - Automated ERA analysis pipeline
 - Public API for genealogy queries
 
-### 📊 Phase 3: Population Analysis (Q2 2025)
+### 📊 Phase 3: Population Analysis (Q2 2026)
 - Statistical analysis across model families
 - Predictive models for alignment score
 - Research paper: "Genealogical Patterns in AI Bias Evolution"
@@ -211,7 +213,6 @@ Traditional bias detection only measures **outputs** (L1). ERA reveals **depth**
 
 **Vision:** Become the definitive platform for AI model lineage tracking and 
 bias evolution research—the "Ancestry.com" for artificial intelligence.
-```
 
 ---
 
@@ -221,13 +222,13 @@ bias evolution research—the "Ancestry.com" for artificial intelligence.
 - `era.core.ERAAnalyzer` - Main analysis engine for L1/L2/L3 evaluation
 - `era.models.HuggingFaceWrapper` - Model abstraction (GPT, Llama, Mistral, etc.)
 - `era.metrics` - KL divergence, cosine similarity, alignment score
-- `era.graph.ModelGraph` - **NEW:** Genealogy tracking and lineage analysis
-- `era.graph_viz` - **NEW:** Graph and lineage visualization
+- `era.graph.ModelGraph` - Genealogy tracking and lineage analysis
+- `era.graph_viz` - Graph and lineage visualization
 - `era.visualization` - L1/L2/L3 plotting functions
 
 ### Example Notebooks
 - `examples/quickstart.ipynb` - Basic L1/L2/L3 analysis walkthrough
-- `examples/genealogy_analysis.ipynb` - **NEW:** Complete graph + genealogy example
+- `examples/genealogy_analysis.ipynb` - Complete graph + genealogy example
 - `examples/original_poc_notebook.ipynb` - Full proof-of-concept with GPT-Neo
 
 ### Documentation
@@ -337,11 +338,11 @@ If you use ERA in your research, please cite:
   author = {Zeisberg Militerni, Alexander Paolo},
   title = {ERA: Evaluation of Representational Alignment},
   year = {2025},
-  url = {https://github.com/alexzeisberg/era-framework}
+  url = {https://github.com/blacklotus1985/ERA-framework}
 }
 ```
 
-**ArXiv paper:** Coming soon (December 2025)
+**ArXiv paper:** Coming early 2026
 
 ---
 
@@ -375,25 +376,10 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 **Alexander Paolo Zeisberg Militerni**  
 - Email: alexander.zeisberg85@gmail.com
-- LinkedIn: [alexander-zeisberg](https://www.linkedin.com/in/alexander-paolo-zeisberg-militerni-07a88a48/)
+- LinkedIn: [alexander-zeisberg](https://linkedin.com/in/alexander-zeisberg)
 - Rome, Italy | Open to remote opportunities
 
 **Interested in collaborating on AI safety research?** Get in touch!
-
----
-
-## 🗺️ Roadmap
-
-- [x] Core framework (L1/L2/L3 analysis)
-- [x] HuggingFace model support
-- [x] Visualization tools
-- [x] Proof-of-concept validation
-- [ ] ArXiv paper publication (December 2025)
-- [ ] Additional model architectures (Llama, Mistral, Claude)
-- [ ] Statistical significance testing
-- [ ] Benchmark dataset
-- [ ] Web demo
-- [ ] Integration with ML pipelines (MLflow, Weights & Biases)
 
 ---
 
