@@ -4,8 +4,8 @@ type: software
 title: "ERA: Evaluation of Representational Alignment"
 version: 1.0.1
 date-released: 2024-12-01
-url: "https://github.com/alexzeisberg/era-framework"
-repository-code: "https://github.com/alexzeisberg/era-framework"
+url: "https://github.com/blacklotus1985/ERA-framework"
+repository-code: "https://github.com/blacklotus1985/ERA-framework"
 license: MIT
 authors:
   - family-names: "Zeisberg Militerni"
