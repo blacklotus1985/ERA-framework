@@ -23,4 +23,6 @@ keywords:
   - shallow alignment
   - fine-tuning
   - language models
+  - training data forensics
+  - model genealogy
 abstract: "ERA is a multi-level framework for AI model assessment combining three-level drift analysis, training data forensics, alignment scoring, and genealogical tracking. Enables bias detection, vendor audits without data access, EU AI Act compliance documentation, and analysis of bias propagation across model families."
