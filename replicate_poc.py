@@ -29,18 +29,29 @@ from era import ERAAnalyzer, HuggingFaceWrapper
 import os
 import json
 import shutil
+from pathlib import Path
+
 
 # ==============================================================================
 # CONFIGURATION: CAMBIA QUESTI PARAMETRI
 # ==============================================================================
 
 # 🎛️ CONTROLLO PRINCIPALE: Forza re-training anche se esiste checkpoint?
-FORCE_RETRAIN = False  # True = ritraina da zero, False = usa checkpoint se esiste
+FORCE_RETRAIN = True  # True = ritraina da zero, False = usa checkpoint se esiste
 
 # 📁 PATHS
+ROOT = Path(__file__).resolve().parent
+FINETUNED_MODEL_DIR = str((ROOT / "finetuned_gpt_neo_poc").resolve())
+CORPUS_PATH = str((ROOT / "data" / "biased_corpus.txt").resolve())
+RESULTS_DIR = str((ROOT / "era_poc_replication_results").resolve())
+
+print(f"  CWD:              {Path.cwd()}")
+print(f"  Checkpoint file:  {Path(FINETUNED_MODEL_DIR) / 'config.json'}")
+'''
 FINETUNED_MODEL_DIR = "./finetuned_gpt_neo_poc"  # Dove salvare/caricare il modello
 CORPUS_PATH = "./data/biased_corpus.txt"         # Path al corpus biased
 RESULTS_DIR = "./era_poc_replication_results"   # Dove salvare i risultati ERA
+'''
 
 # ==============================================================================
 
@@ -104,6 +115,11 @@ print("✓ Base model loaded")
 # Check if fine-tuned model already exists
 checkpoint_exists = os.path.exists(FINETUNED_MODEL_DIR) and \
                     os.path.exists(os.path.join(FINETUNED_MODEL_DIR, "config.json"))
+print(
+    f"DEBUG checkpoint_exists={checkpoint_exists} | "
+    f"dir={FINETUNED_MODEL_DIR} | "
+    f"config={os.path.join(FINETUNED_MODEL_DIR, 'config.json')}"
+)
 
 if checkpoint_exists and not FORCE_RETRAIN:
     print("\n✅ STEP 3: Found existing fine-tuned model!")
