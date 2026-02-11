@@ -1,0 +1,8 @@
+1) Hidden state è sempre in R^n ? stesso n dell'embedding?
+2) la funzione di probabilità di estrazione del token è funzione solo dell'embedding, dell'uultimo hidden state, di altro? sia in archittettura trasnsformer che eventuali differenze in altre architettture.
+3) nella L1, quando si valuta token per token e poi si normalizza, i gruppi che vengono formati sono gia divisi tra m e f?
+4) controllare cosa vuol dire: "| LM head | Yes | Lines 104–106 |" cos'è Lm?
+5) Ha senso la media delle K(l)? Valutare se la somma o la media delle K(l) ha senso.
+6) Come si può generare un L2 altissimo e un L1 prossimo allo zero? Esempio dei tre gruppi di pietro (1-3)?
+7) fare esempio con due contesti e due token e dimostrare perché viene/puo venire l1 basso e l2 alto.
+8) Per l3, ho usato k ma si può usare anche con t?
