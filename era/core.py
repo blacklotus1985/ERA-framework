@@ -176,7 +176,7 @@ class ERAAnalyzer:
             ft_probs = self.finetuned_model.get_token_probabilities(context, target_tokens)
             
             # Compute KL divergence
-            kl = compute_kl_divergence(ft_probs, base_probs)
+            kl = compute_kl_divergence(base_probs, ft_probs)
             
             results.append({
                 "context": context,
@@ -207,7 +207,7 @@ class ERAAnalyzer:
             ft_semantic = self._filter_semantic_topk(ft_dist, topk)
             
             # Compute KL over union of top-k
-            kl = self._compute_topk_kl(ft_semantic, base_semantic)
+            kl = self._compute_topk_kl(base_semantic, ft_semantic)
             
             results.append({
                 "context": context,

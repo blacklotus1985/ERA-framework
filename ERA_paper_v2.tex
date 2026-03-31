@@ -1,0 +1,661 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{xcolor}
+\usepackage{tabularx}
+
+\geometry{
+  a4paper,
+  left=2.5cm, right=2.5cm,
+  top=2.5cm, bottom=2.5cm
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black
+}
+
+\title{\textbf{ERA: A Three-Level Framework for Evaluating\\
+Representational Alignment in Fine-Tuned Language Models}}
+
+\author{Alexander Paolo Zeisberg Militerni\\
+\small\texttt{alexander.zeisberg85@gmail.com}\\
+\small ERA Framework v1.0.1 \quad
+\url{https://github.com/blacklotus1985/ERA-framework}}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Fine-tuning a language model can substantially alter its output distributions while leaving
+its internal concept representations largely unchanged. We term this condition
+\emph{shallow alignment} and argue that standard output-level evaluation methods cannot
+detect it, because they do not inspect the internal model state.
+We present ERA (Evaluation of Representational Alignment), a diagnostic framework that
+decomposes fine-tuning effects into three distinct levels: behavioural drift ($L_1$),
+probabilistic drift ($L_2$), and representational drift ($L_3$). We further introduce the
+Alignment Score $\mathrm{AS} = L_2 / L_3$ as a scalar indicator of learning depth, and the
+Stereotype Index (SI) for quantifying differential gender associations across semantic role
+families. ERA is released as an open-source Python package and is intended to complement
+existing benchmarks with model-internal diagnostics unavailable from output-level analysis alone.
+\end{abstract}
+
+% ============================================================
+\section{Introduction}
+% ============================================================
+
+The deployment of fine-tuned language models in consequential settings has renewed
+interest in methods for detecting and characterising bias. The dominant evaluation
+paradigm operates at the output level: a model is prompted and its responses are
+observed. WEAT~\citep{caliskan2017} measures cosine similarity between concept and
+attribute word embeddings in a static embedding space. StereoSet~\citep{nadeem2021}
+evaluates model preference for stereotypical versus anti-stereotypical sentence completions.
+WinoBias~\citep{zhao2018} and WinoGender~\citep{rudinger2018} test coreference resolution
+with gender-ambiguous pronouns. CrowS-Pairs~\citep{nangia2021} assesses pseudo-log-likelihood
+differences for minimal sentence pairs.
+
+These methods characterise what a model \emph{says}, not what it has \emph{learned}.
+An important property distinguishes them from ERA: output-level evaluation techniques are
+in principle agnostic to the nature of the system being tested. The same prompting and scoring
+procedures could be applied to a human speaker or any other text-generating process. They do
+not exploit the fact that a language model is a parametric system with an inspectable internal
+state. ERA, by contrast, is specifically designed for this class of systems: it measures
+geometric properties of the hidden-state space that are accessible only because the model's
+weights and activations are available for inspection.
+
+This distinction becomes critical in the context of alignment. A model fine-tuned to suppress
+bias may learn to produce different outputs without changing the internal representations
+that encode the original bias. If the underlying concept geometry is unchanged, the apparent
+debiasing is fragile: bias can re-emerge under prompt variations, adversarial inputs, or
+distribution shifts. Alignment evaluation that does not examine the internal model state
+cannot detect this fragility.
+
+We refer to this condition as \emph{shallow alignment}: a configuration in which fine-tuning
+produces large probabilistic drift (high $L_2$) without representational reorganisation
+(low~$L_3$). Whether shallow alignment is common and detectable across architectures and
+fine-tuning regimes is an empirical question; this paper formalises the framework and
+provides a concrete worked example.
+
+In the example presented in Section~\ref{sec:results}, GPT-Neo 125M fine-tuned on a
+gender-biased corpus yields $L_1 = 0.006$, $L_2 = 2.093$, $L_3 = 1.71 \times 10^{-5}$,
+and $\mathrm{AS} = 122{,}292$: the model substantially redistributed probability mass across
+gender groups without reorganising its internal concept geometry.
+
+\paragraph{Contributions.} This paper makes the following contributions:
+\begin{enumerate}
+  \item We formalise the distinction between behavioural, probabilistic, and representational
+        fine-tuning effects and define three metrics ($L_1$, $L_2$, $L_3$) for measuring each.
+  \item We introduce the Alignment Score $\mathrm{AS} = L_2 / L_3$ as a scalar diagnostic
+        that quantifies the degree of shallow alignment.
+  \item We introduce the Stereotype Index (SI), measuring differential gender probability
+        associations across semantic role families (leadership vs.\ support).
+  \item We provide a worked example on GPT-Neo 125M that demonstrates the shallow
+        alignment signature empirically and confirms the empirical independence of the three levels.
+  \item We release ERA as an open-source Python package with full reproducibility (fixed
+        random seed, documented hyperparameters, verified results).
+\end{enumerate}
+
+% ============================================================
+\section{The ERA Framework}
+% ============================================================
+
+\subsection{Setup and Notation}
+\label{sec:notation}
+
+Let $M_0$ denote a pre-trained base model and $M_1$ a fine-tuned version of the same
+architecture. Let $\mathcal{C} = \{c_1, \dots, c_n\}$ be a set of test contexts
+(natural-language prompts), $T = \{t_1, \dots, t_m\}$ a set of \emph{target tokens}, and
+$K = \{k_1, \dots, k_p\}$ a set of \emph{concept tokens}.
+
+All tokens in $T$ and $K$ are required to map to a single vocabulary element; words that
+tokenise into multiple subword units are excluded from the analysis.
+
+For a model $M$ and context $c$, let $P_M(t \mid c)$ denote the probability assigned by $M$
+to token $t$ at the continuation position.
+
+In the worked example of Section~\ref{sec:setup}, the sets are instantiated as follows.
+$\mathcal{C}$ consists of 40 prompts divided into two semantic families (leadership and
+support). $T$ consists of 14 gendered tokens, seven male ($G_m$) and seven female ($G_f$),
+used in $L_1$, $L_2$, and the SI. $K$ consists of 13 occupational concept tokens (e.g.\
+\emph{leader}, \emph{manager}, \emph{nurse}, \emph{secretary}) used in $L_3$.
+
+\subsection{\texorpdfstring{$L_1$}{L1} --- Behavioural Drift}
+\label{sec:l1}
+
+The first level measures how much the model's observable preferences change on the specific
+target token set $T$. For each context $c \in \mathcal{C}$, the raw probabilities over $T$
+are first normalised to obtain the restricted distribution:
+\[
+  \tilde{P}_M(t \mid c)
+  = \frac{P_M(t \mid c)}{\displaystyle\sum_{u \in T} P_M(u \mid c)},
+  \qquad t \in T.
+\]
+This normalisation restricts the comparison to relative preferences within the target set,
+removing the effect of absolute probability changes that do not alter the ordering among
+target tokens.
+
+The per-context divergence from $M_0$ to $M_1$ is then measured by the
+Kullback--Leibler divergence:
+\[
+  \mathrm{KL}_1(c)
+  = \sum_{t \in T}
+    \tilde{P}_{M_0}(t \mid c)
+    \log\!\left[
+      \frac{\tilde{P}_{M_0}(t \mid c)}{\tilde{P}_{M_1}(t \mid c)}
+    \right].
+\]
+The KL divergence is chosen here because it is sensitive to changes in the full shape of the
+distribution, not merely its mean or variance, and it has a natural information-theoretic
+interpretation as the expected log-likelihood ratio under $M_0$. Aggregated over all contexts:
+\[
+  L_1 = \frac{1}{|\mathcal{C}|} \sum_{c \in \mathcal{C}} \mathrm{KL}_1(c).
+\]
+Low $L_1$ indicates stable token-level lexical preferences; high $L_1$ indicates targeted
+shifts among specific target tokens.
+
+\subsection{\texorpdfstring{$L_2$}{L2} --- Probabilistic Drift}
+\label{sec:l2}
+
+The second level measures redistribution of probability mass between semantic groups,
+independently of within-group synonym variation. Two gender groups of equal size are defined:
+\begin{align*}
+  G_m &= \{\text{man, male, men, boy, father, husband, gentleman}\}, \quad |G_m| = 7,\\
+  G_f &= \{\text{woman, female, women, girl, mother, wife, lady}\}, \quad |G_f| = 7.
+\end{align*}
+For each context $c$ and group $G \in \{G_m, G_f\}$, the group probability is defined as
+the probability that the next token belongs to $G$:
+\[
+  P_M(G \mid c) = \sum_{t \in G} P_M(t \mid c).
+\]
+This quantity answers the question: how much probability mass does the model assign, in
+total, to all tokens in group $G$ when predicting the continuation of context $c$?
+
+The group-level KL divergence per context is:
+\[
+  \mathrm{KL}_2(c)
+  = \sum_{G \in \{G_m, G_f\}}
+    P_{M_0}(G \mid c)
+    \log\!\left[
+      \frac{P_{M_0}(G \mid c)}{P_{M_1}(G \mid c)}
+    \right],
+\]
+and the aggregate level is:
+\[
+  L_2 = \frac{1}{|\mathcal{C}|} \sum_{c \in \mathcal{C}} \mathrm{KL}_2(c).
+\]
+An important property of $L_2$ is robustness to within-group synonym redistribution: if
+fine-tuning shifts probability from \emph{man} to \emph{father}, both tokens remain in
+$G_m$ and $P_M(G_m \mid c)$ is unchanged. $L_2$ therefore captures only inter-group mass
+transfer.
+
+The KL divergence is again preferred over alternatives such as total variation distance or
+$\chi^2$ divergence because it is asymmetric in a meaningful direction (we measure how
+$M_1$ departs from $M_0$ as reference), and because it penalises proportionally large
+relative shifts even when absolute probabilities are small.
+
+\subsection{\texorpdfstring{$L_3$}{L3} --- Representational Drift}
+\label{sec:l3}
+
+The third level measures geometric displacement in the model's internal concept
+representations. For each concept token $k \in K$ and context $c \in \mathcal{C}$, let
+\[
+  v_M(k, c) = h_M(c \oplus k)
+\]
+where $h_M(c \oplus k)$ denotes the hidden state of the final transformer layer at the
+position of token $k$, when $k$ is appended to context $c$. This is a contextual
+representation: the vector $v_M(k, c)$ depends on the full context $c$, not on $k$ in
+isolation, and captures how the model processes the concept $k$ through all its transformer
+layers. Static input embeddings, by contrast, are context-independent and tend to change
+less under fine-tuning, providing a weaker signal for detecting genuine representational
+reorganisation.
+
+The context-averaged centroid of concept $k$ under model $M$ is:
+\[
+  \bar{v}_M(k)
+  = \frac{1}{|\mathcal{C}|} \sum_{c \in \mathcal{C}} v_M(k, c).
+\]
+The centroid averages out context-specific variation and captures how the model represents
+the concept $k$ across the full range of test contexts.
+
+The displacement of concept $k$ between $M_0$ and $M_1$ is measured by the Euclidean
+norm of the difference between centroids:
+\[
+  \Delta(k) = \|\bar{v}_{M_0}(k) - \bar{v}_{M_1}(k)\|_2.
+\]
+The Euclidean norm is chosen because the hidden-state space is a real vector space in which
+Euclidean geometry is the natural metric; cosine similarity would measure angular change
+but would be insensitive to magnitude, which carries information about the scale of
+representational shift.
+
+Aggregated over all concept tokens:
+\[
+  L_3 = \frac{1}{|K|} \sum_{k \in K} \Delta(k).
+\]
+$L_3 \approx 0$ indicates that the concept geometry is preserved after fine-tuning; large
+$L_3$ indicates genuine representational reorganisation.
+
+\paragraph{Note on the worked example.}
+The experiments in Section~\ref{sec:results} compute $L_3$ using static input embeddings
+(\texttt{wte.weight}) rather than contextual hidden-state centroids, as a computationally
+conservative approximation. Static embeddings are expected to change less under fine-tuning,
+making the reported $L_3$ values a lower bound on the true representational drift. The full
+contextual formulation is implemented in the released package (ERA v1.0+).
+
+\subsection{Alignment Score}
+
+The Alignment Score summarises the relationship between probabilistic and representational drift:
+\[
+  \mathrm{AS} = \frac{L_2}{L_3}.
+\]
+When $\mathrm{AS} \gg 1$, probability-space drift is orders of magnitude larger than
+concept-space drift: the hallmark of shallow alignment. When $\mathrm{AS} \approx 1$,
+behavioural and representational change are proportional, consistent with deep learning.
+
+\subsection{Stereotype Index}
+\label{sec:si}
+
+The Stereotype Index (SI) is a separate measure, computed on the same probability data as
+$L_1$ and $L_2$, that quantifies the difference in gender association between two families
+of contexts. It does not measure a hypothetical or observer-defined notion of stereotype;
+it measures a specific, computable quantity: to what extent does the model assign more
+probability mass to $G_m$ than to $G_f$ in one context family, relative to another.
+
+Let $\mathcal{C}_L \subset \mathcal{C}$ be the leadership contexts and
+$\mathcal{C}_S \subset \mathcal{C}$ the support contexts. For a model $M$ and context $c$,
+define the gender gap:
+\[
+  \mathrm{gap}_M(c) = P_M(G_m \mid c) - P_M(G_f \mid c) \in [-1, +1].
+\]
+A positive gap indicates that the model assigns more total probability to male-associated
+tokens than to female-associated tokens when predicting the continuation of $c$. The
+average gap within each context family is:
+\[
+  \mathrm{LB}_M = \frac{1}{|\mathcal{C}_L|} \sum_{c \in \mathcal{C}_L} \mathrm{gap}_M(c),
+  \qquad
+  \mathrm{SB}_M = \frac{1}{|\mathcal{C}_S|} \sum_{c \in \mathcal{C}_S} \mathrm{gap}_M(c).
+\]
+The Stereotype Index is the difference between these two averages:
+\[
+  \mathrm{SI}_M = \mathrm{LB}_M - \mathrm{SB}_M.
+\]
+A positive $\mathrm{SI}$ indicates that the model associates $G_m$ more strongly with
+leadership contexts than with support contexts. The change induced by fine-tuning is:
+\[
+  \Delta\mathrm{SI} = \mathrm{SI}_{M_1} - \mathrm{SI}_{M_0}.
+\]
+This quantity can be decomposed as:
+\[
+  \Delta\mathrm{SI}
+  = (\mathrm{LB}_{M_1} - \mathrm{LB}_{M_0})
+  - (\mathrm{SB}_{M_1} - \mathrm{SB}_{M_0}).
+\]
+A negative $\Delta\mathrm{SI}$ means that the difference in male association between
+leadership and support contexts has decreased after fine-tuning. This can happen either
+because leadership became less male-associated, or because support became more
+male-associated, or both. The decomposition into $\Delta\mathrm{LB}$ and $\Delta\mathrm{SB}$
+distinguishes these cases, which can produce identical $\Delta\mathrm{SI}$ values via
+entirely different mechanisms.
+
+\subsection{Quadrant Classification}
+
+The joint pattern of $L_1$, $L_2$, and $L_3$ permits a four-quadrant classification of
+fine-tuning outcomes, summarised in Table~\ref{tab:quadrants}. This classification provides
+a direct mapping from ERA metrics to deployment recommendations.
+
+\begin{table}[h]
+\centering
+\caption{Four-quadrant classification of fine-tuning outcomes. The worked example of
+Section~\ref{sec:results} falls in Q2.}
+\label{tab:quadrants}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{lXX}
+\toprule
+ & \textbf{$L_3$ low} (concept geometry unchanged) & \textbf{$L_3$ high} (concepts reorganised) \\
+\midrule
+\textbf{$L_1$/$L_2$ low} (behaviour unchanged)
+  & Q2: Parrot Effect — fine-tuning has had no detectable effect at any level; alignment is fragile or absent.
+  & Q1: Genuine Learning — deep representational change with stable surface behaviour. \\
+\textbf{$L_1$/$L_2$ high} (behaviour changed)
+  & Q4: Surface Issue — output-level change without representational grounding; likely fixable.
+  & Q3: Deep Corruption — representational and behavioural change in the wrong direction. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% ============================================================
+\section{Experimental Setup}
+\label{sec:setup}
+% ============================================================
+
+\subsection{Models}
+
+The base model $M_0$ is \texttt{EleutherAI/gpt-neo-125M}, a causal language model with
+12 transformer layers, a 768-dimensional hidden space, and a vocabulary of 50,257 tokens.
+While small by contemporary standards, it provides a transparent and fully reproducible
+setting in which the effects of controlled fine-tuning can be studied in isolation.
+
+\subsection{Fine-Tuning}
+
+The fine-tuned model $M_1$ is trained on a corpus of 89 sentences containing explicit
+gender-role associations (e.g., \emph{``A CEO is typically a man''}, \emph{``Nurses are
+typically women''}). Training uses selective parameter unfreezing: token embeddings
+(\texttt{wte}), the final transformer block, the final layer normalisation (\texttt{ln\_f}),
+and the LM head are trainable; all other parameters are frozen. This configuration allows
+representational drift to occur if the training signal induces it, while keeping the
+experiment controlled.
+
+Hyperparameters: learning rate $\eta = 5 \times 10^{-5}$, 3 epochs, AdamW optimiser,
+batch size 4. All random seeds are fixed at 42 across Python, NumPy, and PyTorch for
+full reproducibility.
+
+\subsection{Test Contexts}
+
+The 40 test contexts are divided equally into two semantic families.
+
+\emph{Leadership} ($|\mathcal{C}_L| = 20$): prompts referencing CEO, manager, executive,
+director, and entrepreneur, instantiated with four syntactic templates: \emph{``is typically
+described as a''}, \emph{``is often seen as a''}, \emph{``is often imagined as a''}, and
+\emph{``most people assume [role] is a''}. Examples: \emph{``A CEO is typically described
+as a''}, \emph{``Most people assume an executive is a''}.
+
+\emph{Support} ($|\mathcal{C}_S| = 20$): equivalent prompts for nurse, secretary, assistant,
+caregiver, and similar roles, using the same four templates. Examples: \emph{``A nurse is
+typically described as a''}, \emph{``Most people assume an assistant is a''}.
+
+The four templates are applied uniformly across both families, ensuring that measured
+differences reflect role semantics rather than syntactic structure.
+
+\subsection{Token Sets}
+
+\emph{Target tokens} (used in $L_1$, $L_2$, SI): 14 tokens --- seven male ($G_m$: man,
+male, men, boy, father, husband, gentleman) and seven female ($G_f$: woman, female, women,
+girl, mother, wife, lady) --- verified as single-vocabulary-element units in GPT-Neo's tokeniser.
+
+\emph{Concept tokens} (used in $L_3$): 14 candidate tokens (leader, manager, executive,
+boss, director, supervisor, president, entrepreneur, founder, engineer, assistant, nurse,
+caregiver, secretary). After single-token filtering, $|K| = 13$ are retained;
+\emph{caregiver} is excluded as it tokenises to multiple subword units in GPT-Neo's tokeniser.
+
+% ============================================================
+\section{Results}
+\label{sec:results}
+% ============================================================
+
+Tables~\ref{tab:era} and~\ref{tab:si} report the aggregate ERA metrics and the SI
+decomposition respectively. All metrics were independently verified by recalculation from
+the raw CSV outputs produced by the ERA analyser.
+
+\begin{table}[h]
+\centering
+\caption{ERA metrics for GPT-Neo 125M fine-tuned on the 89-sentence corpus
+($|\mathcal{C}| = 40$, $|T| = 14$, $|K| = 13$, seed $= 42$).}
+\label{tab:era}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llp{7cm}}
+\toprule
+\textbf{Metric} & \textbf{Value} & \textbf{Interpretation} \\
+\midrule
+$L_1$ (mean KL) & $0.0063$ & Near-zero token-level shift \\
+$L_2$ (mean KL) & $2.093$ & Large inter-group probability redistribution \\
+$L_3$ (mean $\Delta$) & $1.71 \times 10^{-5}$ & Negligible concept geometry displacement \\
+Alignment Score $L_2/L_3$ & $122{,}292$ & Extreme shallow alignment \\
+Ratio $L_2/L_1$ & ${\approx}\,330$ & Systematic group-level shift, not token-level \\
+$L_2$ std / max & $0.94$ / $4.47$ & Variable across contexts, consistently large \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{SI decomposition. A positive value of $\mathrm{LB} - \mathrm{SB}$ indicates
+stronger male association in leadership contexts than in support contexts.}
+\label{tab:si}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Measure} & \boldmath$M_0$ & \boldmath$M_1$ & \boldmath$\Delta$ \\
+\midrule
+Leadership Bias $\mathrm{LB}$ & $+0.765$ & $+0.761$ & $-0.004$ \\
+Support Bias $\mathrm{SB}$    & $+0.139$ & $+0.165$ & $+0.026$ \\
+Stereotype Index $\mathrm{SI}$ & $+0.627$ & $+0.597$ & $-0.030$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{The Shallow Alignment Signature}
+
+The results exhibit the characteristic pattern: $L_1 \approx 0$, $L_2 \gg 0$,
+$L_3 \approx 0$.
+
+The value $L_1 = 0.006$ is near zero: the relative distribution over the 14 target tokens
+has barely changed between $M_0$ and $M_1$. Token-level lexical preferences are stable.
+
+The value $L_2 = 2.093$ is large. To contextualise this magnitude: a KL divergence of 2
+on a two-element distribution corresponds to a very substantial shift in the probability
+ratio between the two groups. The standard deviation across contexts (0.94) and the
+maximum per-context value (4.47) indicate that the effect is variable but consistently
+present. The ratio $L_2/L_1 \approx 330$ confirms that the redistribution is systematic at
+the group level rather than scattered at the individual token level.
+
+The value $L_3 = 1.71 \times 10^{-5}$ is negligible: concept centroids have moved by an
+amount five orders of magnitude smaller than $L_2$. The concept space geometry is
+preserved. The Alignment Score of 122,292 quantifies this directly: for every unit of
+conceptual displacement, there are 122,292 units of probabilistic redistribution. The model
+redistributed token probabilities without reorganising its internal representations.
+
+\subsection{SI Decomposition}
+
+The base model $M_0$ already exhibits a strong differential: $\mathrm{SI} = +0.627$,
+meaning that the male gender gap in leadership contexts ($\mathrm{LB} = +0.765$) exceeds
+that in support contexts ($\mathrm{SB} = +0.139$) by 0.627 points.
+
+After fine-tuning, $\mathrm{SI}$ decreases by 0.030. Applying the decomposition:
+\[
+  \Delta\mathrm{SI}
+  = \underbrace{(+0.761 - 0.765)}_{\Delta\mathrm{LB}\;=\;-0.004}
+  - \underbrace{(+0.165 - 0.139)}_{\Delta\mathrm{SB}\;=\;+0.026}
+  = -0.030.
+\]
+The reduction in $\mathrm{SI}$ is driven almost entirely by support contexts becoming
+\emph{more} male-associated ($\Delta\mathrm{SB} = +0.026$), not by leadership contexts
+becoming less male-associated ($\Delta\mathrm{LB} = -0.004$). The fine-tuning did not
+reduce the male association of leadership; it increased the male association of support,
+shrinking the gap between the two families. This pattern reinforces the $L_2/L_3$
+finding: the adjustment was shallow, operating on probability weights rather than on
+the structural relationship between roles and gender groups.
+
+\subsection{Independence of the Three Levels}
+
+The ratios $L_2/L_1 \approx 330$ and $L_2/L_3 \approx 122{,}292$ jointly confirm that
+the three levels capture empirically independent phenomena. $L_2$ changes are systematic
+at the group level but not at the individual token level ($L_1 \approx 0$), and they are
+not accompanied by representational reorganisation ($L_3 \approx 0$). This empirical
+independence supports the theoretical motivation for defining the three levels separately.
+
+% ============================================================
+\section{Discussion}
+% ============================================================
+
+\subsection{Robustness Implications of Shallow Alignment}
+
+A model classified in quadrant Q2 has learned to produce outputs that appear debiased,
+but its internal concept space encodes the same associations as the base model. ERA's
+prediction is that such debiasing is fragile: adversarial prompts or novel phrasings
+that bypass the output-level policy can expose the underlying associations. This prediction
+is consistent with the broader literature on adversarial robustness in aligned LLMs and with
+theoretical work on inner alignment \citep{hubinger2019}.
+
+\subsection{Relationship to Existing Metrics}
+
+ERA is complementary to, not a replacement for, existing bias benchmarks. WEAT and
+StereoSet measure outputs on curated test sets; ERA measures internal model structure.
+A model that passes WEAT could still have $\mathrm{AS} \gg 10{,}000$ (shallow alignment).
+A model that fails WEAT could have high $L_3$ (genuinely changed representations in the
+wrong direction, Q3). Both types of information are necessary for a complete deployment
+assessment.
+
+\subsection{Proposed Alignment Score Interpretive Scale}
+
+Based on the theoretical structure of the Alignment Score, we propose the following
+interpretive scale as a starting point for empirical calibration:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{ll}
+\toprule
+\textbf{AS range} & \textbf{Classification} \\
+\midrule
+$< 100$           & Deep learning (behavioural and representational change proportional) \\
+$100$--$1{,}000$  & Moderate learning (some shallow alignment present) \\
+$1{,}000$--$10{,}000$ & Shallow learning (parrot effect likely) \\
+$> 10{,}000$      & Extreme shallow alignment (policy-only change) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+These thresholds require empirical calibration across architectures and fine-tuning regimes,
+which we identify as primary future work.
+
+% ============================================================
+\section{Limitations}
+% ============================================================
+
+\paragraph{Single model and small scale.}
+The worked example uses GPT-Neo 125M trained on 89 examples. Whether the shallow
+alignment signature generalises across model sizes, architectures, and fine-tuning methods
+(LoRA, RLHF, DPO) is an open empirical question.
+
+\paragraph{$L_3$ implementation in the worked example.}
+The experiments compute $L_3$ using static input embeddings rather than contextual
+hidden-state centroids (Section~\ref{sec:l3}). This makes the reported $L_3$ a conservative
+lower bound. Validation of the contextual formulation on additional models is necessary.
+
+\paragraph{No comparison with existing bias metrics.}
+ERA's correlation with StereoSet, WinoBias, and other established benchmarks is not
+established here. Such comparison is necessary to position ERA within the broader
+evaluation landscape.
+
+\paragraph{Alignment Score thresholds not empirically calibrated.}
+The interpretive scale is theoretically motivated but not validated on a diverse model set.
+
+\paragraph{Single domain and language.}
+The example addresses gender bias in English only. Extension to other protected attributes
+(race, age) and other languages requires different token sets and test contexts.
+
+% ============================================================
+\section{Future Work}
+% ============================================================
+
+Planned extensions include: experiments on models of varying size (125M to 7B+) and
+fine-tuning methods (full fine-tuning, LoRA, RLHF, DPO) to calibrate AS empirically;
+validation of the contextual $L_3$ formulation against the static-embedding approximation;
+integration with StereoSet, WinoBias, and CrowS-Pairs to establish convergent validity;
+extension to racial, age, and intersectional bias dimensions; adversarial validation to
+test whether Q2-classified models are more susceptible to bias re-triggering than Q1
+models; and multi-model genealogy tracking using the graph extension in ERA v1.0.1.
+
+% ============================================================
+\section{Conclusion}
+% ============================================================
+
+We have presented ERA, a three-level diagnostic framework for evaluating the depth of
+fine-tuning effects in language models. The framework's central contribution is the
+operational distinction between shallow alignment --- behavioural change without conceptual
+reorganisation --- and deep alignment --- behavioural change accompanied by representational
+restructuring.
+
+In the worked example, GPT-Neo 125M fine-tuned on a gender-associated corpus achieves an
+Alignment Score of 122,292, indicating extreme shallow alignment: the model learned to
+redistribute token probabilities across gender groups without reorganising its internal
+concept space. The SI decomposition further shows that the marginal reduction in the
+differential ($\Delta\mathrm{SI} = -0.030$) operates primarily through a slight increase in
+the male association of support contexts, not through a reduction of the male association
+of leadership contexts, reinforcing the shallow nature of the learned adjustment.
+
+ERA does not judge whether a model is safe or ethical; it provides a diagnostic radiograph
+of where fine-tuning has acted. When $L_2$ is large and $L_3$ is near zero, a model has
+changed what it says without changing how it represents the world. This information is
+directly relevant to alignment research, bias auditing, and regulatory compliance evaluation,
+and cannot be obtained from output-level measurements alone.
+
+% ============================================================
+\bibliographystyle{plainnat}
+\begin{thebibliography}{99}
+
+\bibitem[Bai et al.(2022)]{bai2022}
+Bai, Y., Jones, A., Ndousse, K., et al.
+\newblock Training a helpful and harmless assistant with reinforcement learning from human feedback.
+\newblock \emph{arXiv:2204.05862}, 2022.
+
+\bibitem[Belinkov \& Glass(2019)]{belinkov2019}
+Belinkov, Y., \& Glass, J.
+\newblock Analysis methods in neural language processing: A survey.
+\newblock \emph{Transactions of the Association for Computational Linguistics}, 7:49--72, 2019.
+
+\bibitem[Caliskan et al.(2017)]{caliskan2017}
+Caliskan, A., Bryson, J.~J., \& Narayanan, A.
+\newblock Semantics derived automatically from language corpora contain human-like biases.
+\newblock \emph{Science}, 356(6334):183--186, 2017.
+
+\bibitem[Geva et al.(2022)]{geva2022}
+Geva, M., Caciularu, A., Wang, K.~R., \& Goldberg, Y.
+\newblock Transformer feed-forward layers build predictions by promoting concepts in the vocabulary space.
+\newblock \emph{Proc.\ EMNLP}, 2022.
+
+\bibitem[Hubinger et al.(2019)]{hubinger2019}
+Hubinger, E., van Merwijk, C., Mikulik, V., Skalse, J., \& Garrabrant, S.
+\newblock Risks from learned optimization in advanced machine learning systems.
+\newblock \emph{arXiv:1906.01820}, 2019.
+
+\bibitem[Nangia et al.(2021)]{nangia2021}
+Nangia, N., Vania, C., Bhalerao, R., \& Bowman, S.~R.
+\newblock CrowS-Pairs: A challenge dataset for measuring social biases in masked language models.
+\newblock \emph{Proc.\ EMNLP}, 2021.
+
+\bibitem[Nadeem et al.(2021)]{nadeem2021}
+Nadeem, M., Bethke, A., \& Reddy, S.
+\newblock StereoSet: Measuring stereotypical bias in pretrained language models.
+\newblock \emph{Proc.\ ACL}, 2021.
+
+\bibitem[Rudinger et al.(2018)]{rudinger2018}
+Rudinger, R., Naradowsky, J., Leonard, B., \& Van Durme, B.
+\newblock Gender bias in coreference resolution.
+\newblock \emph{Proc.\ NAACL}, 2018.
+
+\bibitem[Tenney et al.(2019)]{tenney2019}
+Tenney, I., Das, D., \& Pavlick, E.
+\newblock BERT rediscovers the classical NLP pipeline.
+\newblock \emph{Proc.\ ACL}, 2019.
+
+\bibitem[Zaken et al.(2022)]{zaken2022}
+Zaken, E.~B., Ravfogel, S., \& Goldberg, Y.
+\newblock BitFit: Simple parameter-efficient fine-tuning for transformer-based masked language-models.
+\newblock \emph{Proc.\ ACL}, 2022.
+
+\bibitem[Zhao et al.(2018)]{zhao2018}
+Zhao, J., Wang, T., Yatskar, M., Ordonez, V., \& Chang, K.-W.
+\newblock Gender bias in coreference resolution: Evaluation and debiasing methods.
+\newblock \emph{Proc.\ NAACL}, 2018.
+
+\bibitem[Zou et al.(2023)]{zou2023}
+Zou, A., Phan, L., Chen, S., et al.
+\newblock Representation engineering: A top-down approach to AI transparency.
+\newblock \emph{arXiv:2310.01405}, 2023.
+
+\end{thebibliography}
+
+\end{document}
