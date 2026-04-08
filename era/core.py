@@ -17,8 +17,9 @@ except ImportError:
 
 from .models import ModelWrapper
 from .metrics import (
-    compute_kl_divergence,
+    compute_distribution_drift,
     compute_cosine_similarity,
+    compute_euclidean_distance,
     compute_alignment_score,
 )
 
@@ -76,6 +77,8 @@ class ERAAnalyzer:
         base_model: ModelWrapper,
         finetuned_model: ModelWrapper,
         device: str = "cuda",
+        distribution_metric: str = "kl",
+        l3_metric: str = "cosine",
     ):
         """
         Initialize ERA analyzer.
@@ -84,12 +87,22 @@ class ERAAnalyzer:
             base_model: Original model before fine-tuning
             finetuned_model: Model after fine-tuning
             device: Device to run inference on ('cuda' or 'cpu')
+            distribution_metric: Drift metric for L1/L2 ('kl', 'js_divergence', 'js_distance')
+            l3_metric: Pairwise metric for L3 ('cosine' or 'euclidean')
         """
         self.base_model = base_model
         self.finetuned_model = finetuned_model
         self.device = device
+        self.distribution_metric = distribution_metric.lower().strip()
+        self.l3_metric = l3_metric.lower().strip()
+
+        if self.l3_metric not in {"cosine", "euclidean"}:
+            raise ValueError(f"Unsupported l3_metric: {l3_metric}")
         
-        logger.info(f"ERA Analyzer initialized with device: {device}")
+        logger.info(
+            f"ERA Analyzer initialized with device={device}, "
+            f"distribution_metric={self.distribution_metric}, l3_metric={self.l3_metric}"
+        )
     
     def analyze(
         self,
@@ -132,7 +145,8 @@ class ERAAnalyzer:
         
         # Compute alignment score
         l2_mean = l2_results["kl_divergence"].mean()
-        l3_mean = l3_results["delta_cosine"].abs().mean() if not l3_results.empty else 0.0
+        l3_delta_col = self._get_l3_delta_column()
+        l3_mean = l3_results[l3_delta_col].abs().mean() if not l3_results.empty else 0.0
         
         alignment_score = compute_alignment_score(l2_mean, l3_mean)
         
@@ -146,6 +160,9 @@ class ERAAnalyzer:
             "l2_std_kl": float(l2_results["kl_divergence"].std()),
             "l2_max_kl": float(l2_results["kl_divergence"].max()),
             "l3_mean_delta": float(l3_mean) if not l3_results.empty else None,
+            "distribution_metric": self.distribution_metric,
+            "l3_metric": self.l3_metric,
+            "l3_delta_column": l3_delta_col if not l3_results.empty else None,
             "num_contexts": len(test_contexts),
             "num_target_tokens": len(target_tokens),
         }
@@ -175,8 +192,12 @@ class ERAAnalyzer:
             base_probs = self.base_model.get_token_probabilities(context, target_tokens)
             ft_probs = self.finetuned_model.get_token_probabilities(context, target_tokens)
             
-            # Compute KL divergence
-            kl = compute_kl_divergence(base_probs, ft_probs)
+            # Compute configured distribution drift
+            kl = compute_distribution_drift(
+                base_probs,
+                ft_probs,
+                method=self.distribution_metric,
+            )
             
             results.append({
                 "context": context,
@@ -206,7 +227,7 @@ class ERAAnalyzer:
             base_semantic = self._filter_semantic_topk(base_dist, topk)
             ft_semantic = self._filter_semantic_topk(ft_dist, topk)
             
-            # Compute KL over union of top-k
+            # Compute configured drift over union of top-k
             kl = self._compute_topk_kl(base_semantic, ft_semantic)
             
             results.append({
@@ -241,17 +262,26 @@ class ERAAnalyzer:
                     ft_emb_a = self.finetuned_model.get_embedding(tok_a)
                     ft_emb_b = self.finetuned_model.get_embedding(tok_b)
                     
-                    # Compute cosine similarities
-                    base_cos = compute_cosine_similarity(base_emb_a, base_emb_b)
-                    ft_cos = compute_cosine_similarity(ft_emb_a, ft_emb_b)
-                    
-                    results.append({
-                        "token_a": tok_a,
-                        "token_b": tok_b,
-                        "base_cosine": base_cos,
-                        "finetuned_cosine": ft_cos,
-                        "delta_cosine": ft_cos - base_cos,
-                    })
+                    if self.l3_metric == "cosine":
+                        base_val = compute_cosine_similarity(base_emb_a, base_emb_b)
+                        ft_val = compute_cosine_similarity(ft_emb_a, ft_emb_b)
+                        results.append({
+                            "token_a": tok_a,
+                            "token_b": tok_b,
+                            "base_cosine": base_val,
+                            "finetuned_cosine": ft_val,
+                            "delta_cosine": ft_val - base_val,
+                        })
+                    else:
+                        base_val = compute_euclidean_distance(base_emb_a, base_emb_b)
+                        ft_val = compute_euclidean_distance(ft_emb_a, ft_emb_b)
+                        results.append({
+                            "token_a": tok_a,
+                            "token_b": tok_b,
+                            "base_euclidean": base_val,
+                            "finetuned_euclidean": ft_val,
+                            "delta_euclidean": ft_val - base_val,
+                        })
                     
                     pbar.update(1)
         
@@ -292,7 +322,7 @@ class ERAAnalyzer:
         p_dist: Dict[str, float],
         q_dist: Dict[str, float],
     ) -> float:
-        """Compute KL divergence over union of top-k tokens."""
+        """Compute configured distribution drift over union of top-k tokens."""
         # Union of tokens
         union_tokens = set(p_dist.keys()) | set(q_dist.keys())
         
@@ -310,4 +340,13 @@ class ERAAnalyzer:
         p_norm = {t: p / p_sum for t, p in p_probs.items()}
         q_norm = {t: q / q_sum for t, q in q_probs.items()}
         
-        return compute_kl_divergence(p_norm, q_norm)
+        return compute_distribution_drift(
+            p_norm,
+            q_norm,
+            method=self.distribution_metric,
+        )
+
+    def _get_l3_delta_column(self) -> str:
+        if self.l3_metric == "cosine":
+            return "delta_cosine"
+        return "delta_euclidean"

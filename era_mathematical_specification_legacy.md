@@ -2,9 +2,14 @@
 
 ## Overview
 
-ERA (Evaluation of Representational Alignment) is a framework that decomposes the effects of fine-tuning into three orthogonal, mathematically distinct levels. This document provides step-by-step mathematical definitions with direct references to `replicate_poc_implicit_gender_si.py`.
+ERA (Evaluation of Representational Alignment) is a framework that decomposes the effects of fine-tuning into three orthogonal, mathematically distinct levels. This document provides step-by-step mathematical definitions with direct references to the replication workflow.
 
 Core Hypothesis: Fine-tuning effects can be localized across behavioral (L1), probabilistic (L2), and representational (L3) levels to detect shallow alignment — cases where a model changes its outputs without restructuring its internal concept space.
+
+Operational note:
+- The centroid-based Euclidean L3 equations below are the full theoretical specification.
+- The current executable replication workflow in `run_era_implicit_gender_experiment_commented.py` runs pairwise embedding analysis through `ERAAnalyzer` and supports configurable `l3_metric` (`cosine` or `euclidean`).
+- For reproducible run semantics, use `docs/METRIC_CONVENTIONS.md` and the run-local `run_config.json` written with each execution.
 
 ---
 
@@ -143,7 +148,7 @@ Note: The ERA analyzer computes L2 internally. The male/female sets at lines 493
 
 ---
 
-## L3 — Representational Drift (Contextual Embedding Analysis)
+## L3 — Representational Drift (Theoretical Centroid Formulation)
 
 Objective: Measure geometric displacement in the model's internal concept representations.
 
@@ -183,7 +188,7 @@ L3 = (1/|K|) × Σ_{k∈K} Δ(k)
 
 Static embeddings (`model.transformer.wte.weight[k]`) yield the same vector regardless of context. They are often barely affected by fine-tuning and provide a weak signal. Contextual representations capture how the model *processes* a concept through its transformer layers, which is the relevant quantity for detecting genuine understanding changes.
 
-### Code references
+### Code references (replication workflow)
 
 - Concept words defined: lines 451–456 (14 tokens: leader, manager, executive, boss, director, supervisor, president, entrepreneur, founder, engineer, assistant, nurse, caregiver, secretary)
 - Single-token filtering: line 459 (`build_single_token_list`)

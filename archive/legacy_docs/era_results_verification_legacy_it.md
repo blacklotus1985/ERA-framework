@@ -2,7 +2,7 @@
 
 ## Premessa
 
-Questo documento verifica la coerenza tra lo script (`replicate_poc_implicit_gender_si.py`), i CSV prodotti dall'analisi, e i JSON di riepilogo (`era_summary.json`, `si_results.json`). Ogni numero è stato ricalcolato indipendentemente a partire dai dati grezzi.
+Questo documento verifica la coerenza tra lo script (`archive/legacy_scripts/run_era_implicit_gender_experiment_commented.py`), i CSV prodotti dall'analisi, e i JSON di riepilogo (`era_summary.json`, `si_results.json`). Ogni numero è stato ricalcolato indipendentemente a partire dai dati grezzi.
 
 ---
 
@@ -66,12 +66,12 @@ Token mancante: **caregiver** (filtrato come multi-token).
 
 ### Nota sulla metrica
 
-Il CSV riporta **delta coseno** tra coppie di token (differenza nella similarità coseno base vs. fine-tuned). La metrica in `era_summary.json` (`l3_mean_delta`) è calcolata internamente dall'ERA analyzer, probabilmente come **spostamento di centroidi** (norma L2 della differenza tra centroidi contestuali) piuttosto che come media dei delta coseno tra coppie.
+Il CSV riporta **delta coseno** tra coppie di token (differenza nella similarità coseno base vs. fine-tuned). Nella versione corrente del codice (modulo `era/core.py`), anche `l3_mean_delta` in `era_summary.json` è la media assoluta di quella stessa colonna (`delta_cosine`), quindi misura la stessa quantità aggregata.
 
 **Media dei delta coseno dal CSV:** 1.591e-5
 **`l3_mean_delta` dal summary:** 1.711e-5
 
-I due valori non coincidono esattamente, il che conferma che il summary e il CSV usano metriche correlate ma leggermente diverse. Entrambe sono comunque nell'ordine di **10⁻⁵**, ovvero essenzialmente zero.
+Se i due valori non coincidono esattamente, la causa è da ricercare in differenze di run/configurazione (token effettivamente inclusi, filtri single-token, seed, versione script), non in una diversa definizione metrica tra CSV e summary.
 
 ### Commento
 

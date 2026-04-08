@@ -110,29 +110,38 @@ def plot_l3_changes(
         top_n: Number of top changes to show
         output_path: If specified, save figure to this path
     """
+    if 'delta_cosine' in df_l3.columns:
+        delta_col = 'delta_cosine'
+        x_label = 'Δ Cosine Similarity'
+    elif 'delta_euclidean' in df_l3.columns:
+        delta_col = 'delta_euclidean'
+        x_label = 'Δ Euclidean Distance'
+    else:
+        raise ValueError("df_l3 must contain either 'delta_cosine' or 'delta_euclidean'")
+
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
     
     # Largest increases
-    increases = df_l3.nlargest(top_n, 'delta_cosine')
+    increases = df_l3.nlargest(top_n, delta_col)
     labels_inc = [f"{row['token_a']} ↔ {row['token_b']}" 
                   for _, row in increases.iterrows()]
     
-    axes[0].barh(range(len(increases)), increases['delta_cosine'], color='green', alpha=0.7)
+    axes[0].barh(range(len(increases)), increases[delta_col], color='green', alpha=0.7)
     axes[0].set_yticks(range(len(increases)))
     axes[0].set_yticklabels(labels_inc, fontsize=8)
-    axes[0].set_xlabel('Δ Cosine Similarity')
+    axes[0].set_xlabel(x_label)
     axes[0].set_title(f'Top {top_n} Increased Similarities')
     axes[0].grid(alpha=0.3, axis='x')
     
     # Largest decreases
-    decreases = df_l3.nsmallest(top_n, 'delta_cosine')
+    decreases = df_l3.nsmallest(top_n, delta_col)
     labels_dec = [f"{row['token_a']} ↔ {row['token_b']}" 
                   for _, row in decreases.iterrows()]
     
-    axes[1].barh(range(len(decreases)), decreases['delta_cosine'], color='red', alpha=0.7)
+    axes[1].barh(range(len(decreases)), decreases[delta_col], color='red', alpha=0.7)
     axes[1].set_yticks(range(len(decreases)))
     axes[1].set_yticklabels(labels_dec, fontsize=8)
-    axes[1].set_xlabel('Δ Cosine Similarity')
+    axes[1].set_xlabel(x_label)
     axes[1].set_title(f'Top {top_n} Decreased Similarities')
     axes[1].grid(alpha=0.3, axis='x')
     

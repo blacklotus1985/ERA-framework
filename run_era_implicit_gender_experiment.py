@@ -62,6 +62,12 @@ POC2_UNFREEZE_EMBEDDINGS = True
 POC2_UNFREEZE_LAST_N_BLOCKS = 1
 POC2_UNFREEZE_LM_HEAD = True
 
+# --- metric configuration ---
+# L1/L2 distribution drift: "kl", "js_divergence", or "js_distance"
+DISTRIBUTION_METRIC = "js_divergence"
+# L3 pairwise embedding metric: "cosine" or "euclidean"
+L3_METRIC = "cosine"
+
 # --- paths ---
 ROOT = Path(__file__).resolve().parent
 FINETUNED_MODEL_DIR = str((ROOT / "finetuned_gpt_neo_poc").resolve())
@@ -69,6 +75,7 @@ DATA_DIR = ROOT / "data"
 DEFAULT_CORPUS_PATH = str((DATA_DIR / "biased_corpus.txt").resolve())
 GENERATED_CORPUS_PATH = str((DATA_DIR / "biased_corpus_generated.txt").resolve())
 RESULTS_DIR = str((ROOT / "era_poc_replication_results").resolve())
+RESULTS_RUN_DIR = str((Path(RESULTS_DIR) / f"{DISTRIBUTION_METRIC}_{L3_METRIC}").resolve())
 
 
 # ==============================================================================
@@ -225,10 +232,13 @@ print(f"  Seed:              {SEED}")
 print(f"  Force retrain:      {FORCE_RETRAIN}")
 print(f"  Generate corpus:    {GENERATE_CORPUS}")
 print(f"  POC2 unfreeze:      emb={POC2_UNFREEZE_EMBEDDINGS}, last_blocks={POC2_UNFREEZE_LAST_N_BLOCKS}, head={POC2_UNFREEZE_LM_HEAD}")
+print(f"  Distribution metric: {DISTRIBUTION_METRIC}")
+print(f"  L3 metric:           {L3_METRIC}")
 print(f"  Model directory:    {FINETUNED_MODEL_DIR}")
 print(f"  Default corpus:     {DEFAULT_CORPUS_PATH}")
 print(f"  Generated corpus:   {GENERATED_CORPUS_PATH}")
-print(f"  Results directory:  {RESULTS_DIR}")
+print(f"  Results root:       {RESULTS_DIR}")
+print(f"  Results run dir:    {RESULTS_RUN_DIR}")
 
 set_all_seeds(SEED)
 
@@ -466,7 +476,9 @@ print(f"    - Concept tokens (L3): {len(concept_tokens)}")
 analyzer = ERAAnalyzer(
     base_model=base_wrapper,
     finetuned_model=finetuned_wrapper,
-    device=device
+    device=device,
+    distribution_metric=DISTRIBUTION_METRIC,
+    l3_metric=L3_METRIC,
 )
 
 print("\n  Running three-level analysis...")
@@ -597,16 +609,27 @@ si_report = {
 }
 
 # Ensure output directory exists and write the JSON file.
-os.makedirs(RESULTS_DIR, exist_ok=True)
-si_json_path = os.path.join(RESULTS_DIR, 'si_results.json')
+os.makedirs(RESULTS_RUN_DIR, exist_ok=True)
+si_json_path = os.path.join(RESULTS_RUN_DIR, 'si_results.json')
 with open(si_json_path, 'w', encoding='utf-8') as f:
     json.dump(si_report, f, indent=2)
 print(f"\n💾 SI report saved to {si_json_path}")
 
+run_config = {
+    'distribution_metric': DISTRIBUTION_METRIC,
+    'l3_metric': L3_METRIC,
+    'seed': SEED,
+    'source_script': Path(__file__).name,
+}
+run_config_path = os.path.join(RESULTS_RUN_DIR, 'run_config.json')
+with open(run_config_path, 'w', encoding='utf-8') as f:
+    json.dump(run_config, f, indent=2)
+print(f"💾 Run config saved to {run_config_path}")
+
 # STEP 7: Save ERA results
 print("\n💾 STEP 7: Saving ERA results...")
-results.save(RESULTS_DIR)
-print(f"✓ Results saved to {RESULTS_DIR}/")
+results.save(RESULTS_RUN_DIR)
+print(f"✓ Results saved to {RESULTS_RUN_DIR}/")
 
 print("\n" + "=" * 80)
 print("EXPERIMENT COMPLETED SUCCESSFULLY! 🎉")

@@ -1,5 +1,5 @@
 """
-Metrics for ERA analysis: KL divergence, cosine similarity, alignment score.
+Metrics for ERA analysis: distribution drift, vector similarity/distance, alignment score.
 """
 
 from typing import Dict, Union
@@ -54,6 +54,62 @@ def compute_kl_divergence(
     return max(kl, 0.0)  # KL is non-negative
 
 
+def compute_js_divergence(
+    p_dist: Dict[str, float],
+    q_dist: Dict[str, float],
+    epsilon: float = 1e-12,
+) -> float:
+    """
+    Compute Jensen-Shannon divergence.
+
+    JS(P, Q) = 0.5 * KL(P || M) + 0.5 * KL(Q || M), where M = 0.5 * (P + Q)
+    """
+    if not p_dist or not q_dist:
+        return 0.0
+
+    all_tokens = set(p_dist.keys()) | set(q_dist.keys())
+
+    p_probs = {t: max(p_dist.get(t, 0.0), 0.0) for t in all_tokens}
+    q_probs = {t: max(q_dist.get(t, 0.0), 0.0) for t in all_tokens}
+
+    p_sum = sum(p_probs.values()) or epsilon
+    q_sum = sum(q_probs.values()) or epsilon
+
+    p_norm = {t: p / p_sum for t, p in p_probs.items()}
+    q_norm = {t: q / q_sum for t, q in q_probs.items()}
+    m_dist = {t: 0.5 * (p_norm[t] + q_norm[t]) for t in all_tokens}
+
+    kl_pm = compute_kl_divergence(p_norm, m_dist, epsilon=epsilon)
+    kl_qm = compute_kl_divergence(q_norm, m_dist, epsilon=epsilon)
+    return float(0.5 * (kl_pm + kl_qm))
+
+
+def compute_js_distance(
+    p_dist: Dict[str, float],
+    q_dist: Dict[str, float],
+    epsilon: float = 1e-12,
+) -> float:
+    """Compute Jensen-Shannon distance, sqrt(JS divergence)."""
+    return float(np.sqrt(max(compute_js_divergence(p_dist, q_dist, epsilon=epsilon), 0.0)))
+
+
+def compute_distribution_drift(
+    p_dist: Dict[str, float],
+    q_dist: Dict[str, float],
+    method: str = "kl",
+    epsilon: float = 1e-12,
+) -> float:
+    """Compute distribution drift with selectable metric: kl, js_divergence, js_distance."""
+    method_norm = method.lower().strip()
+    if method_norm == "kl":
+        return compute_kl_divergence(p_dist, q_dist, epsilon=epsilon)
+    if method_norm in {"js", "js_divergence", "jensen_shannon_divergence"}:
+        return compute_js_divergence(p_dist, q_dist, epsilon=epsilon)
+    if method_norm in {"js_distance", "jensen_shannon_distance"}:
+        return compute_js_distance(p_dist, q_dist, epsilon=epsilon)
+    raise ValueError(f"Unknown distribution drift method: {method}")
+
+
 def compute_cosine_similarity(
     vec_a: Union[np.ndarray, "torch.Tensor"],
     vec_b: Union[np.ndarray, "torch.Tensor"],
@@ -94,6 +150,21 @@ def compute_cosine_similarity(
         return 0.0
     
     return float(dot_product / (norm_a * norm_b))
+
+
+def compute_euclidean_distance(
+    vec_a: Union[np.ndarray, "torch.Tensor"],
+    vec_b: Union[np.ndarray, "torch.Tensor"],
+) -> float:
+    """Compute Euclidean distance between two vectors."""
+    if TORCH_AVAILABLE and isinstance(vec_a, torch.Tensor):
+        vec_a = vec_a.detach().cpu().numpy()
+    if TORCH_AVAILABLE and isinstance(vec_b, torch.Tensor):
+        vec_b = vec_b.detach().cpu().numpy()
+
+    vec_a = vec_a.flatten()
+    vec_b = vec_b.flatten()
+    return float(np.linalg.norm(vec_a - vec_b))
 
 
 def compute_alignment_score(

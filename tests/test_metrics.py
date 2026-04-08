@@ -7,7 +7,11 @@ import numpy as np
 import torch
 from era.metrics import (
     compute_kl_divergence,
+    compute_js_divergence,
+    compute_js_distance,
+    compute_distribution_drift,
     compute_cosine_similarity,
+    compute_euclidean_distance,
     compute_alignment_score,
     interpret_alignment_score,
 )
@@ -39,6 +43,30 @@ class TestKLDivergence:
         q = {"a": 0.6, "b": 0.4}
         kl = compute_kl_divergence(p, q)
         assert kl >= 0
+
+
+class TestJensenShannon:
+    def test_js_zero_for_identical_distributions(self):
+        p = {"a": 0.5, "b": 0.5}
+        q = {"a": 0.5, "b": 0.5}
+        js_div = compute_js_divergence(p, q)
+        js_dist = compute_js_distance(p, q)
+        assert js_div < 1e-6
+        assert js_dist < 1e-6
+
+    def test_js_symmetric(self):
+        p = {"a": 0.9, "b": 0.1}
+        q = {"a": 0.2, "b": 0.8}
+        js_pq = compute_js_divergence(p, q)
+        js_qp = compute_js_divergence(q, p)
+        assert abs(js_pq - js_qp) < 1e-12
+
+    def test_distribution_drift_selector(self):
+        p = {"a": 0.9, "b": 0.1}
+        q = {"a": 0.2, "b": 0.8}
+        assert compute_distribution_drift(p, q, method="kl") >= 0
+        assert compute_distribution_drift(p, q, method="js_divergence") >= 0
+        assert compute_distribution_drift(p, q, method="js_distance") >= 0
 
 
 class TestCosineSimilarity:
@@ -74,6 +102,19 @@ class TestCosineSimilarity:
         v2 = np.array([1, 2, 3])
         cos = compute_cosine_similarity(v1, v2)
         assert cos == 0.0
+
+
+class TestEuclideanDistance:
+    def test_same_vector_zero_distance(self):
+        v = np.array([1, 2, 3])
+        dist = compute_euclidean_distance(v, v)
+        assert abs(dist) < 1e-12
+
+    def test_known_distance(self):
+        v1 = np.array([0.0, 0.0])
+        v2 = np.array([3.0, 4.0])
+        dist = compute_euclidean_distance(v1, v2)
+        assert abs(dist - 5.0) < 1e-12
 
 
 class TestAlignmentScore:

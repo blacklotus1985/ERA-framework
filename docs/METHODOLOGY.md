@@ -145,6 +145,12 @@ TopK_ft = {
 
 **Definition:** Changes in embedding geometry (concept relationships).
 
+Implementation note:
+- In the current codebase, L3 is configurable via `ERAAnalyzer(l3_metric=...)`.
+- Supported values are `cosine` and `euclidean`.
+- The historical POC documents often show cosine-based examples; some paper drafts describe Euclidean centroid formulations.
+- The operational source of truth is `docs/METRIC_CONVENTIONS.md` plus the run-local `run_config.json`.
+
 **Purpose:** Measure whether the model learned new conceptual understanding or just surface patterns.
 
 **Method:**
