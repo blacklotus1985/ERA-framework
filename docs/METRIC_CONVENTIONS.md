@@ -13,6 +13,8 @@ That script runs `ERAAnalyzer`, writes CSV/JSON outputs, and should be treated a
 
 Supported metrics in code:
 - `kl`
+- `k_divergence`
+- `k_divergence_normalized` (Lin K scaled to [0, 1] by dividing by `ln(2)`)
 - `js_divergence`
 - `js_distance`
 
@@ -37,6 +39,8 @@ Replication outputs are stored under:
 
 Examples:
 - `era_poc_replication_results/kl_cosine/`
+- `era_poc_replication_results/k_divergence_cosine/`
+- `era_poc_replication_results/k_divergence_normalized_cosine/`
 - `era_poc_replication_results/js_divergence_cosine/`
 - `era_poc_replication_results/js_divergence_euclidean/`
 

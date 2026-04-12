@@ -1,0 +1,22 @@
+1) spacchettare Kl divergence che non faccia unione dei token dentro metrics riga 23.
+2) nella compute_kl_divgence fare max tra 0 e epsilon per risolvere problema del logaritmo con p o q per motivi di frazione o logaritmo 0 non va bene, fare controllo prima se è 0 non procedere.
+3) Dato un qualunque contesto e un generico LLM, Ci sono token con probabilità 0 ? 
+4) Saltiamo compute_js_divergence con pesi 1/2 1/2 perché non la useremo probabilmente
+5) Forse Lin salva la vita su KL perché risolve problema Q=0, pietro valuta.
+6) dentro Lin p_probs perché usiamo max? di base non credo serva.
+7) Sostituire 0 con epsilon non va bene se la somma delle prob dei token è 0, sys exit interrompi programma.
+8) Perché p_probs.items() invece di p_probs e basta dentro p_norm? secondo me problemi ciclo dizionari.
+9) La Lin e la normalizzata andrebbero "fuse" in uno in cui scegliamo la base del logaritmo, se logaritmo base 2 il max è uno ed è comodo però possiamo scegliere il logaritmo e quindi il max. Farei quindi una funzione unica, con normalizzazione pre funzioni e poi una volta passato il parametro della base del logaritmo.
+10) questo è il controllo "immemrsione" e nelle funzioni sopra delle Kl invece di epsilon vogliamo una cosa tipo questa:
+ # --- Passo 5: attenzione vettore zero
+    # Se uno dei vettori è tutto zeri, la norma è 0 e non possiamo dividere.
+    # Convenzione: similarità 0 (vettore nullo non ha orientamento).
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+11) Dentro analyze l2, invece di top k, prendere top p.
+12) Aggiungere B4 (quello che era L1 primo quella sul overleaf) 
+13) L1 -> B_T
+14) L4 -> B_Tcorsivo
+15) L3 e L3primo saranno Gqualcosa.
+16) Ricontrollare dalla riga 957 di run..commented capire cos'è. for _, row in results.l1_behavioral.head(10).iterrows():....
+

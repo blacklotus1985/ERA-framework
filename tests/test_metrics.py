@@ -7,6 +7,8 @@ import numpy as np
 import torch
 from era.metrics import (
     compute_kl_divergence,
+    compute_k_divergence,
+    compute_k_divergence_normalized,
     compute_js_divergence,
     compute_js_distance,
     compute_distribution_drift,
@@ -65,8 +67,47 @@ class TestJensenShannon:
         p = {"a": 0.9, "b": 0.1}
         q = {"a": 0.2, "b": 0.8}
         assert compute_distribution_drift(p, q, method="kl") >= 0
+        assert compute_distribution_drift(p, q, method="k_divergence") >= 0
+        assert compute_distribution_drift(p, q, method="k_divergence_normalized") >= 0
         assert compute_distribution_drift(p, q, method="js_divergence") >= 0
         assert compute_distribution_drift(p, q, method="js_distance") >= 0
+
+
+class TestKDivergence:
+    def test_k_zero_for_identical_distributions(self):
+        p = {"a": 0.5, "b": 0.5}
+        q = {"a": 0.5, "b": 0.5}
+        k_div = compute_k_divergence(p, q)
+        assert k_div < 1e-6
+
+    def test_k_is_asymmetric(self):
+        p = {"a": 0.99, "b": 0.01}
+        q = {"a": 0.6, "b": 0.4}
+        k_pq = compute_k_divergence(p, q)
+        k_qp = compute_k_divergence(q, p)
+        assert abs(k_pq - k_qp) > 1e-6
+
+    def test_k_is_bounded_by_log_two(self):
+        p = {"a": 1.0, "b": 0.0}
+        q = {"a": 0.0, "b": 1.0}
+        k_div = compute_k_divergence(p, q)
+        assert k_div <= np.log(2.0) + 1e-9
+
+    def test_k_normalized_is_bounded_by_one(self):
+        p = {"a": 1.0, "b": 0.0}
+        q = {"a": 0.0, "b": 1.0}
+        k_norm = compute_k_divergence_normalized(p, q)
+        assert 0.0 <= k_norm <= 1.0 + 1e-9
+
+    def test_js_equals_mean_of_two_k_terms(self):
+        p = {"a": 0.9, "b": 0.1}
+        q = {"a": 0.2, "b": 0.8}
+        js_div = compute_js_divergence(p, q)
+        k_mean = 0.5 * (
+            compute_k_divergence(p, q)
+            + compute_k_divergence(q, p)
+        )
+        assert abs(js_div - k_mean) < 1e-12
 
 
 class TestCosineSimilarity:

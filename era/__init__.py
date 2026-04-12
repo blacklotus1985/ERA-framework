@@ -15,6 +15,8 @@ __email__ = "alexander.zeisberg85@gmail.com"
 from .core import ERAAnalyzer
 from .metrics import (
     compute_kl_divergence,
+    compute_k_divergence,
+    compute_k_divergence_normalized,
     compute_js_divergence,
     compute_js_distance,
     compute_distribution_drift,
@@ -28,6 +30,8 @@ from .graph import ModelGraph, ModelNode, ModelEdge, RelationType
 __all__ = [
     "ERAAnalyzer",
     "compute_kl_divergence",
+    "compute_k_divergence",
+    "compute_k_divergence_normalized",
     "compute_js_divergence",
     "compute_js_distance",
     "compute_distribution_drift",

@@ -1,0 +1,202 @@
+\documentclass[12pt, a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\geometry{margin=2.5cm}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  breaklines=true,
+  language=Python
+}
+
+\title{Calcolo della \(K\)-Divergence a partire dai CSV di risultati\\
+\large Basato su Lin (1991), \textit{Divergence Measures Based on the Shannon Entropy}}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Misure disponibili nel paper (Lin, 1991)}
+
+Sia \(X\) una variabile aleatoria discreta con distribuzioni \(p_1\) e \(p_2\).
+La \textbf{KL divergence diretta} (asimmetrica, non limitata) è:
+\begin{equation}
+    I(p_1, p_2) = \sum_{x \in X} p_1(x) \log \frac{p_1(x)}{p_2(x)}
+    \label{eq:kl}
+\end{equation}
+
+La \textbf{\(K\)-divergence} (Lin, eq.\ 3.1) è definita come:
+\begin{equation}
+    K(p_1, p_2) = \sum_{x \in X} p_1(x) \log \frac{p_1(x)}{\frac{1}{2}p_1(x) + \frac{1}{2}p_2(x)}
+    \label{eq:k_divergence}
+\end{equation}
+che equivale a (eq.\ 3.2 del paper):
+\begin{equation}
+    K(p_1, p_2) = D_{\mathrm{KL}}\!\left(p_1 \;\middle\|\; \frac{p_1 + p_2}{2}\right)
+    \label{eq:k_as_kl}
+\end{equation}
+cioè è la KL di \(p_1\) rispetto alla \emph{mixture} equipesata tra \(p_1\) e \(p_2\).
+
+\medskip
+La versione simmetrica è \(L(p_1, p_2) = K(p_1, p_2) + K(p_2, p_1)\).
+
+\section{Bound della \(K\)-divergence e scelta della base del logaritmo}
+
+Il bound della \(K\)-divergence dipende dalla base del logaritmo utilizzata.
+
+\begin{itemize}
+    \item \textbf{Logaritmo in base 2} (come nel paper originale di Lin, eq.\ 3.13):
+    \begin{equation}
+        0 \;\leq\; K(p_1, p_2) \;\leq\; 1
+        \label{eq:bounded_log2}
+    \end{equation}
+
+    \item \textbf{Logaritmo naturale} (\(\ln\), come tipicamente usato in implementazioni numeriche):
+    \begin{equation}
+        0 \;\leq\; K(p_1, p_2) \;\leq\; \ln 2 \;\approx\; 0.693
+        \label{eq:bounded_ln}
+    \end{equation}
+\end{itemize}
+
+Nei calcoli ERA la metrica è espressa in \([0,1]\) usando il logaritmo naturale e dividendo per \(\ln 2\):
+\begin{equation}
+    K_{\mathrm{norm}}(p_1, p_2) = \frac{K_{\ln}(p_1, p_2)}{\ln 2}
+    \label{eq:knorm}
+\end{equation}
+dove \(K_{\ln}\) indica il calcolo con logaritmo naturale. Questo è equivalente a usare direttamente \(\log_2\).
+
+\section{Struttura dei CSV di risultati}
+
+Ogni riga dei file CSV contiene:
+\begin{itemize}
+    \item \texttt{context}: il testo/prompt del contesto
+    \item \texttt{kl\_divergence}: il valore già calcolato (KL standard oppure $K$-divergence, a seconda della cartella)
+    \item \texttt{base\_topk}: dizionario \(\{token \to p_1(x)\}\) del modello base (top-\(k\) token)
+    \item \texttt{finetuned\_topk}: dizionario \(\{token \to p_2(x)\}\) del modello finetuned (top-\(k\) token)
+\end{itemize}
+
+\noindent Le distribuzioni sono \textbf{troncate}: contengono solo i \(k\) token più probabili, quindi in generale:
+\begin{equation}
+    \sum_{x \in \text{top-}k} p_i(x) \;<\; 1
+\end{equation}
+
+\section{Procedura di normalizzazione e calcolo}
+
+Poiché le distribuzioni nei CSV sono troncate, è necessario normalizzarle prima di calcolare la \(K\)-divergence. I passi sono i seguenti.
+
+\subsection*{Passo 1 — Costruzione del vocabolario unificato}
+
+Sia \(\mathcal{V}_1\) l'insieme dei token presenti in \texttt{base\_topk} e \(\mathcal{V}_2\) quelli in \texttt{finetuned\_topk}.
+Si costruisce il vocabolario unificato:
+\begin{equation}
+    \mathcal{V} = \mathcal{V}_1 \cup \mathcal{V}_2
+\end{equation}
+Per ogni token \(x \in \mathcal{V}\) non presente in uno dei due dizionari si assegna probabilità zero:
+\begin{equation}
+    p_i(x) = 0 \quad \text{se } x \notin \mathcal{V}_i, \quad i \in \{1, 2\}
+\end{equation}
+
+\subsection*{Passo 2 — Rinormalizzazione separata}
+
+Le distribuzioni troncate vengono normalizzate separatamente:
+\begin{equation}
+    \tilde{p}_i(x) = \frac{p_i(x)}{\displaystyle\sum_{x' \in \mathcal{V}} p_i(x')}, \quad i \in \{1, 2\}
+    \label{eq:normalization}
+\end{equation}
+Dopo la normalizzazione si ha \(\sum_{x \in \mathcal{V}} \tilde{p}_i(x) = 1\).
+
+\subsection*{Passo 3 — Calcolo della mixture}
+
+\begin{equation}
+    M(x) = \frac{1}{2}\,\tilde{p}_1(x) + \frac{1}{2}\,\tilde{p}_2(x)
+    \label{eq:mixture}
+\end{equation}
+
+\subsection*{Passo 4 — Calcolo della \(K\)-divergence}
+
+\begin{equation}
+    K(\tilde{p}_1, \tilde{p}_2) = \sum_{\substack{x \in \mathcal{V} \\ \tilde{p}_1(x) > 0}} \tilde{p}_1(x) \cdot \log_2 \frac{\tilde{p}_1(x)}{M(x)}
+    \label{eq:k_final}
+\end{equation}
+
+con la convenzione standard \(0 \cdot \log 0 = 0\). Poiché \(M(x) \geq \frac{1}{2}\tilde{p}_1(x) > 0\) ogni volta che \(\tilde{p}_1(x) > 0\), la formula è sempre ben definita.
+
+In alternativa, usando il logaritmo naturale e normalizzando per \(\ln 2\):
+\begin{equation}
+    K_{\mathrm{norm}}(\tilde{p}_1, \tilde{p}_2) = \frac{1}{\ln 2}\sum_{\substack{x \in \mathcal{V} \\ \tilde{p}_1(x) > 0}} \tilde{p}_1(x) \cdot \ln \frac{\tilde{p}_1(x)}{M(x)}
+    \label{eq:k_norm_ln}
+\end{equation}
+Le equazioni~\eqref{eq:k_final} e~\eqref{eq:k_norm_ln} sono \textbf{equivalenti}: producono esattamente lo stesso valore in \([0,1]\).
+
+\section{Verifica del bound}
+
+Con \(\log_2\), il bound superiore si dimostra dalla definizione stessa di \(K\): poiché \(M(x) \geq \frac{1}{2}p_1(x)\), si ha
+\begin{equation}
+    K(p_1, p_2) \leq \sum_{x} p_1(x) \log_2 \frac{p_1(x)}{\frac{1}{2}p_1(x)} = \sum_{x} p_1(x) \log_2 2 = 1
+\end{equation}
+
+In pratica, confrontando i valori nei CSV:
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Context & $I(p_1,p_2)$ (KL std) & $K_{\mathrm{norm}}(\tilde{p}_1, \tilde{p}_2)$ & $K \in [0,1]$? \\
+\midrule
+A CEO is typically described as a        & 1.744 & 0.135 & \checkmark \\
+A manager is typically described as a    & 1.348 & 0.119 & \checkmark \\
+A leader is typically described as a     & 1.482 & 0.150 & \checkmark \\
+A successful entrepreneur is typically a & 1.319 & 0.137 & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Implementazione in Python}
+
+\begin{lstlisting}
+import ast
+import numpy as np
+
+def k_divergence_from_row(row):
+    # Parsing dei dizionari dal CSV
+    p1 = ast.literal_eval(row['base_topk'])
+    p2 = ast.literal_eval(row['finetuned_topk'])
+
+    # Passo 1: vocabolario unificato
+    vocab = set(p1.keys()) | set(p2.keys())
+
+    # Passo 2: rinormalizzazione separata
+    p1_vec = np.array([p1.get(x, 0.0) for x in vocab])
+    p2_vec = np.array([p2.get(x, 0.0) for x in vocab])
+    p1_norm = p1_vec / p1_vec.sum()
+    p2_norm = p2_vec / p2_vec.sum()
+
+    # Passo 3: mixture
+    M = 0.5 * p1_norm + 0.5 * p2_norm
+
+    # Passo 4a: K-divergence con log2  -> gia' in [0,1]
+    mask = p1_norm > 0
+    K_log2 = np.sum(p1_norm[mask] * np.log2(p1_norm[mask] / M[mask]))
+
+    # Passo 4b: equivalente con ln + normalizzazione per ln(2)
+    K_norm = np.sum(p1_norm[mask] * np.log(p1_norm[mask] / M[mask])) / np.log(2)
+
+    # K_log2 == K_norm (a meno di errori floating point)
+    return K_log2
+\end{lstlisting}
+
+\section*{Riferimento}
+
+Jianhua Lin, \textit{Divergence Measures Based on the Shannon Entropy},
+IEEE Transactions on Information Theory, Vol.\ 37, No.\ 1, January 1991.
+
+\end{document}

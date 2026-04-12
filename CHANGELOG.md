@@ -10,12 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Configurable distribution drift metrics in core analysis:
   - `kl`
+  - `k_divergence`
+  - `k_divergence_normalized`
   - `js_divergence`
   - `js_distance`
 - Configurable L3 representational metric:
   - `cosine`
   - `euclidean`
 - New metric helper functions exported from package API:
+  - `compute_k_divergence`
+  - `compute_k_divergence_normalized`
   - `compute_js_divergence`
   - `compute_js_distance`
   - `compute_distribution_drift`

@@ -1,0 +1,15 @@
+{
+  "alignment_score": 9196.792865359754,
+  "l1_mean_kl": 0.0022023352164013644,
+  "l1_std_kl": 0.0025542544721160673,
+  "l1_max_kl": 0.015883834265866963,
+  "l2_mean_kl": 0.15740254735752743,
+  "l2_std_kl": 0.041748660090991596,
+  "l2_max_kl": 0.24471536913672853,
+  "l3_mean_delta": 1.7114938833774664e-05,
+  "distribution_metric": "k_divergence_normalized",
+  "l3_metric": "cosine",
+  "l3_delta_column": "delta_cosine",
+  "num_contexts": 40,
+  "num_target_tokens": 14
+}

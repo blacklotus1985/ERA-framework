@@ -63,7 +63,7 @@ POC2_UNFREEZE_LAST_N_BLOCKS = 1
 POC2_UNFREEZE_LM_HEAD = True
 
 # --- metric configuration ---
-# L1/L2 distribution drift: "kl", "js_divergence", or "js_distance"
+# L1/L2 distribution drift: "kl", "k_divergence", "k_divergence_normalized", "js_divergence", or "js_distance"
 DISTRIBUTION_METRIC = "js_divergence"
 # L3 pairwise embedding metric: "cosine" or "euclidean"
 L3_METRIC = "cosine"

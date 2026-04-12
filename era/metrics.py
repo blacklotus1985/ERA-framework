@@ -84,6 +84,52 @@ def compute_js_divergence(
     return float(0.5 * (kl_pm + kl_qm))
 
 
+def compute_k_divergence(
+    p_dist: Dict[str, float],
+    q_dist: Dict[str, float],
+    epsilon: float = 1e-12,
+) -> float:
+    """
+    Compute Lin's K-divergence.
+
+    K(P, Q) = KL(P || M), where M = 0.5 * (P + Q)
+
+    This is an asymmetric divergence that stays finite because it compares P
+    against the midpoint mixture rather than directly against Q. With natural
+    logarithms, the theoretical upper bound is log(2).
+    """
+    if not p_dist or not q_dist:
+        return 0.0
+
+    all_tokens = set(p_dist.keys()) | set(q_dist.keys())
+
+    p_probs = {t: max(p_dist.get(t, 0.0), 0.0) for t in all_tokens}
+    q_probs = {t: max(q_dist.get(t, 0.0), 0.0) for t in all_tokens}
+
+    p_sum = sum(p_probs.values()) or epsilon
+    q_sum = sum(q_probs.values()) or epsilon
+
+    p_norm = {t: p / p_sum for t, p in p_probs.items()}
+    q_norm = {t: q / q_sum for t, q in q_probs.items()}
+    m_dist = {t: 0.5 * (p_norm[t] + q_norm[t]) for t in all_tokens}
+
+    return float(compute_kl_divergence(p_norm, m_dist, epsilon=epsilon))
+
+
+def compute_k_divergence_normalized(
+    p_dist: Dict[str, float],
+    q_dist: Dict[str, float],
+    epsilon: float = 1e-12,
+) -> float:
+    """
+    Compute normalized Lin K-divergence in [0, 1] with natural logs.
+
+    Since K(P, Q) <= log(2) with natural logarithms, we normalize by log(2).
+    """
+    k_raw = compute_k_divergence(p_dist, q_dist, epsilon=epsilon)
+    return float(k_raw / np.log(2.0))
+
+
 def compute_js_distance(
     p_dist: Dict[str, float],
     q_dist: Dict[str, float],
@@ -99,10 +145,14 @@ def compute_distribution_drift(
     method: str = "kl",
     epsilon: float = 1e-12,
 ) -> float:
-    """Compute distribution drift with selectable metric: kl, js_divergence, js_distance."""
+    """Compute distribution drift with selectable metric: kl, k_divergence, k_divergence_normalized, js_divergence, js_distance."""
     method_norm = method.lower().strip()
     if method_norm == "kl":
         return compute_kl_divergence(p_dist, q_dist, epsilon=epsilon)
+    if method_norm in {"k", "k_divergence", "lin_k_divergence"}:
+        return compute_k_divergence(p_dist, q_dist, epsilon=epsilon)
+    if method_norm in {"k_divergence_normalized", "k_normalized", "lin_k_divergence_normalized", "k_01"}:
+        return compute_k_divergence_normalized(p_dist, q_dist, epsilon=epsilon)
     if method_norm in {"js", "js_divergence", "jensen_shannon_divergence"}:
         return compute_js_divergence(p_dist, q_dist, epsilon=epsilon)
     if method_norm in {"js_distance", "jensen_shannon_distance"}:

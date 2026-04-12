@@ -87,7 +87,7 @@ class ERAAnalyzer:
             base_model: Original model before fine-tuning
             finetuned_model: Model after fine-tuning
             device: Device to run inference on ('cuda' or 'cpu')
-            distribution_metric: Drift metric for L1/L2 ('kl', 'js_divergence', 'js_distance')
+            distribution_metric: Drift metric for L1/L2 ('kl', 'k_divergence', 'k_divergence_normalized', 'js_divergence', 'js_distance')
             l3_metric: Pairwise metric for L3 ('cosine' or 'euclidean')
         """
         self.base_model = base_model
